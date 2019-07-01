@@ -1,12 +1,15 @@
 library(ggplot2)
 library(copula)
+library(readr)
+
+wine_red <- read_delim("winequality-red-1.csv", delim = ";")
+wine_red <- wine_red[-c(1296, 1297), ]
 
 wine_red["fixed acidity"]
 wine_red[["fixed acidity"]]
 
 wine_red_df <- as.data.frame(wine_red)
 X <- as.matrix(wine_red_df)
-X <- X[-c(1296, 1297), ]
 
 mean(wine_red[["fixed acidity"]])
 var(wine_red[["fixed acidity"]])
@@ -22,7 +25,8 @@ hist(log(wine_red[["volatile acidity"]]))
 X[,2] <- log(wine_red[["volatile acidity"]])
 
 # exponential dist.
-hist((wine_red[["citric acid"]])) 
+hist((wine_red[["citric acid"]]))
+X[,3] <- wine_red[["citric acid"]] + 0.000001
 
 # log transform, norm dist.
 hist((wine_red[["residual sugar"]]))
@@ -129,16 +133,26 @@ mcc <- mvdc(cc, margins = c('norm', 'norm', 'exp', 'norm', 'norm',
             paramMargins = paramMargins)
 mcc
 
-mle <- fitMvdc(X[,1:11], mvdc = mcc, start = start)
+param_lower_bds <- lapply(mcc@margins, function(mdist) {
+  if(mdist == "norm") {
+    return(c(-Inf, 0))
+  } else if(mdist == "exp") {
+    return(0)
+  }
+})
+
+param_lower_bds <- c(param_lower_bds, 0)
+param_lower_bds <- unlist(param_lower_bds)
 summary(mle)
 
 # model selection - 10-fold cross-validation
 k <- 10
 set.seed(2019)
-xvCopula(claytonCopula(dim =d), x = X[,1:11], k = k)
+xvCopula(claytonCopula(dim = d), x = X[,1:11], k = k)
 
 
 # t copula
+nu <- 2
 tc <- tCopula(dim = d, df = nu)
 mtc <- mvdc(tc, margins = c('norm', 'norm', 'exp', 'norm', 'norm', 
                             'norm', 'norm', 'norm', 'norm', 'norm','norm'),
@@ -206,13 +220,20 @@ U <- cbind(pnorm(X[,1], mean = mean(X[,1]),
                  sd = sqrt((n-1)/n) * sd(X[,2])))
 
 
-ifme <- fitCopula(claytonCopula(dim =11), data = U, start = 0.01, optim.method = 'BFGS', method = 'mpl')
+ifme <- fitCopula(claytonCopula(dim =11), data = U, start = 0.01, optim.method = 'BFGS', method = 'ml')
 summary(ifme)
+
+ifme_gumbel <- fitCopula(gumbelCopula(2, dim = 11), data = U, start = 2, optim.method = 'BFGS', method = 'ml')
+summary(ifme_gumbel)
+
+ifme_t <- fitCopula(tCopula(0.1, dim = 11, df = 2), data = U, start = c(0.1, 2), optim.method = 'BFGS', method = 'ml')
+summary(ifme_t)
+
 
 # Rosenblatt tranfrom bivariate!
 set.seed(2019)
 cc1 <- claytonCopula(2, dim = 2)
-mcc <- mvdc(cc, margins = c('norm', 'norm'),
+mcc <- mvdc(cc1, margins = c('norm', 'norm'),
             paramMargins = list(list(mean = 0, sd = 1),
                                 list(mean = 0, sd = 1)))
 
@@ -224,8 +245,8 @@ start <- c(mu0 = mean(X[, 1]), sig0 = sd(X[,1]),
 summary(mle)
 
 # 2.7 Rosenblatt transform
-U <- rCopula(n, copula = cc1)
+#U <- rCopula(n, copula = cc1)
 # apply the transformation R_C  
-U. <- cCopula(U, copula = cc1)
+U. <- cCopula(U, copula = claytonCopula(mle@estimate["th0"]), dim = 2)
 #plot(U, xlab = quote(U*''[1]), ylab = quote(U*''[2]))
 plot(U., xlab = quote(U*"'"[1]), ylab = quote(U*"'"[2]))
