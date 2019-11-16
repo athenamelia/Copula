@@ -4,7 +4,7 @@
 \alias{dNC}
 \title{Calculate density of a nested archimedean copula}
 \usage{
-dNC(U, naclist, family)
+dNC(U, naclist, log = TRUE)
 }
 \arguments{
 \item{U}{matrix of pseudo-observations}

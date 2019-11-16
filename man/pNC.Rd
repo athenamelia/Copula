@@ -4,7 +4,7 @@
 \alias{pNC}
 \title{Calculate cdf of a nested archimedean copula}
 \usage{
-pNC(U, naclist, family)
+pNC(U, naclist)
 }
 \arguments{
 \item{U}{matrix of pseudo-observations}

@@ -2,20 +2,20 @@
 % Please edit documentation in R/loglikNC.R
 \name{loglikNC}
 \alias{loglikNC}
-\title{Estimation of nested A. copula parameters}
+\title{estimation of nested A. copula parameters}
 \usage{
 loglikNC(par, U, naclist)
 }
 \arguments{
-\item{par}{vector of new parameters}
+\item{par}{vector of copula parameters}
 
-\item{U}{matrix of pseudo-observations}
+\item{U}{observations}
 
 \item{naclist}{list specifying nesting structure}
 }
 \value{
-sum of cdf of nested copula with new parameters
+result obtained from optimizing provided parameters
 }
 \description{
-Estimation of nested A. copula parameters
+estimation of nested A. copula parameters
 }
