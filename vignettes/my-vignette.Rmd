@@ -1,0 +1,25 @@
+---
+title: "MLE for nested Archimedean copulas"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{my-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(ncopula)
+```
+
+### Abstract
+
+The package ncopula provides procedures for calculating maximum likelihood estimation for nested Archimedean copulas including multiple families and rotation copulas in any dimensions. This will expand to include selection of nested Archimedean copula nesting structure and an evaluation of a nested Archimedean copulas random forest model. 
+
+Keywords: Archimedean copulas, nested Archimedean copulas, rotation copulas, random forest
