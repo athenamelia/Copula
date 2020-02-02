@@ -3,14 +3,15 @@
 #' @param U matrix of pseudo-observations
 #' @param nac_Node a nested A. copula
 #' @return vector of length nrow(U) with density values
-get_density <- function(nac_Node, U, log = TRUE) {
+#' @export
+dncopula <- function(nac_Node, U, log = TRUE) {
   density <- 0
   family <- get_family(nac_Node)
-  theta <- get_iniTheta(nac_Node)
+  theta <- get_theta(nac_Node)
   ncol_U <- length(get_U_indices(nac_Node))
   U_indices <- get_U_indices(nac_Node)
-  
-  if (has_subcopulas(nac_Node) == FALSE) {
+
+  if (has_subcopula(nac_Node) == FALSE) {
     if (family == 'Clayton') {
       density <- density + dCopula(U[,U_indices], claytonCopula(theta, dim = ncol_U), log = TRUE)
     } else if (family == 'Frank') {
@@ -25,16 +26,17 @@ get_density <- function(nac_Node, U, log = TRUE) {
       density <- density + dCopula(U[,U_indices], amhCopula(theta, dim = ncol_U), log = TRUE)
     }
   }
-  
-  else if (has_subcopulas(nac_Node)) {
-    subcopulas_list <- get_subcopulas(nac_Node)
-    V <- matrix(NA, nrow = nrow(U), ncol = length(subcopulas_list))
-    
-    for (v_ind in 1:length(subcopulas_list)) {
-      density <- density + get_density(subcopulas_list[[v_ind]], U, log = TRUE)
-      V[,v_ind] <- get_cdf(subcopulas_list[[v_ind]], U)
+
+  else if (has_subcopula(nac_Node)) {
+    subcopulas <- count_subcopula(nac_Node)
+    V <- matrix(NA, nrow = nrow(U), ncol = subcopulas)
+
+    for (v_ind in 1:subcopulas) {
+      child_copula <- get_subcopula(nac_Node, v_ind)
+      density <- density + dncopula(child_copula, U, log = TRUE)
+      V[,v_ind] <- pncopula(child_copula, U)
     }
-    
+
     X <- cbind(U[,U_indices], V)
     # check family
     if (family == 'Clayton') {
@@ -51,7 +53,7 @@ get_density <- function(nac_Node, U, log = TRUE) {
       density <- density + dCopula(X, amhCopula(theta, dim = ncol(X)), log = TRUE)
     }
   }
-  
+
   if (log) {
     return(density)
   } else {
