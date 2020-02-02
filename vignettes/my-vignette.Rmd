@@ -5,6 +5,11 @@ vignette: >
   %\VignetteIndexEntry{my-vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{amsmath}
+  - \usepackage{relsize}
+bibliography: bibliography.bib
 ---
 
 ```{r, include = FALSE}
@@ -16,10 +21,175 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(ncopula)
+library(copula)
+library(gridExtra)
+library(ggplot2)
+library(readr)
 ```
+
 
 ### Abstract
 
 The package ncopula provides procedures for calculating maximum likelihood estimation for nested Archimedean copulas including multiple families and rotation copulas in any dimensions. This will expand to include selection of nested Archimedean copula nesting structure and an evaluation of a nested Archimedean copulas random forest model. 
 
 Keywords: Archimedean copulas, nested Archimedean copulas, rotation copulas, random forest
+
+### 1. Description of copulas
+#### Copulas
+
+Copula is a multivariate distribution function with standard uniform univariate margins $U(0,1)$ margins. The distribution function H of a d-dimensional random vector $X = (X_{1}, ..., X_{d})$ is defined
+$H(x) = P(X \leq x) = P(X_{1} \leq x_{1},..., X_{d} \leq x_{d})$, $x = (x_{1},..., x_{d}) \in R^{d}.$ [@hofert2019elements].
+
+The standard uniform univariate df $F_{j}$ of $X_{j}, j \in \{1, ..., d\}$, can be obtained from the multivariate df H by $F_{j} = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R$. Thus, $F_{1},...,F_{d}$ are also called the $univariate \space margins$ or the $marginal \space dfs$ of $X$. 
+
+The code is adapted from Hofert_2018_Book_ElementsOfCopulaModelingWithR. 
+```{r}
+# Scatter plots of n = 1000 independent observations of the bivariate random vectors (X1,X2)
+wine_red <- read.csv("data/wine_red.csv")
+wine_red_df <- as.data.frame(wine_red)
+wine_red <- wine_red_df[-c(1296, 1297), -12]
+X <- wine_red
+U <- pobs(X[,1:11])
+plot(as.matrix(X), xlab = quote(X*''[1]), ylab = quote(X*''[2]))
+```
+
+```{r}
+p1 <- ggplot(mapping = aes(x = X[, 1])) + geom_histogram()
+p2 <- ggplot(mapping = aes(x = X[, 2])) + geom_histogram()
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+```{r}
+# plot pseudo-observation U
+p3 <- ggplot(mapping = aes(x = U[, 1])) + geom_histogram()
+p4 <- ggplot(mapping = aes(x = U[, 2])) + geom_histogram()
+grid.arrange(p3, p4, ncol = 2)
+```
+
+Looking at the margins plot, the points do not spread constantly. It seems that independence copula is not appropriate here. 
+
+#### Cumulative distribution function and probability distribution function calculated with a copula
+The multivariate df H is calculated via
+
+$H(x) = P(X \leq x) = P(X_{1} \leq x_{1},..., X_{d} \leq x_{d})$, $x = (x_{1},..., x_{d}) \in R^{d}.$
+
+$H(x) = C(F_{1}(x_{1}),...,F_{d}(x_{d}), x \in R^{d}$
+
+where copula $C$ represents the dependence structure of the variables and $F_{1},...,F_{d}$ represents univariate marginals which can be obtained from $F_{j}(x_{j}) = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R$.
+
+The density c of a copula C is calculated via
+
+$c(u) = \frac{\partial^d}{\partial u_{d}...\partial u_{1}}C(u_{1},...,u_{d}), u \in (0,1)^{d}$
+
+For data with nonparametrically estimated margins $F_{1},...,F_{d}$, the unknown univariate marginal dfs are estimated by the (rescaled) empirical dfs of the component sample of $X_{1},...,X_{n}$.Specifically, for any $j \in \{1,...,d\}, F_{j}$ is estimated by
+
+$F_{n,j}(x) = \frac{1}{n+1}\sum_{i=1}^{n}1(X_{ij}\leq x), x \in R.$
+
+The estimated margins are used to form sample
+
+$U_{i,n} = (F_{n,1}(X_{i1}),...,F_{n,d}(X_{id})), i \in \{1,...,n\}$
+
+$U_{i,n}$ is a sample of $pseudo-observations$ from C. 
+
+Here is a single variable X_1 with values on the horizontal axis, pdf and cdf (two vertically aligned sub-figures), with a sample of values of X_{i1},... X_{in} along the horizontal axis and their correspnding pseudo-obs U_{i1}, ... U_{in} along the vertical axis in the cdf plot. 
+
+```{r}
+n <- nrow(X)
+wine_data <- cbind(X,U)
+wine_data <- as.data.frame(wine_data)
+colnames(wine_data) <- c("X_1", "X_2", "X_3","X_4", "X_5", "X_6", "X_7","X_8", "X_9", "X_10","X_11", 
+                         "U_1", "U_2", "U_3","U_4", "U_5", "U_6", "U_7","U_8", "U_9", "U_10","U_11")
+
+p5 <- ggplot(data = wine_data, mapping = aes(x = X_1, y = U_1)) +
+  stat_function(fun = pnorm, args = list(mean = mean(wine_data$X_1), sd = sqrt((n-1)/n) * sd(wine_data$X_1)), color = "black", n = n) +
+  labs(title = 'Probability density function') 
+
+p6 <- ggplot(data = wine_data, mapping = aes(x = X_1)) +
+  stat_function(fun = dnorm, args = list(mean = mean(wine_data$X_1), sd = sqrt((n-1)/n) * sd(wine_data$X_1)), color = "black", n = n) +
+  labs(title = 'Cumulative distribution function')
+grid.arrange(p5, p6, ncol = 2)
+```
+
+
+2) For a pair of variables (X_1, X_2), show a scatter plot of samples (X_{i1}, X_{i2}) drawn from their joint distribution and what corresponding pairs (U_{i1}, U_{i2}) look like. Pick a few observations to highlight, to show where they fall within a large sample. 
+```{r}
+plot(X[,1:2], xlab = quote(X*''[1]), ylab = quote(X*''[2]))
+plot(U[,1:2], xlab = quote(U*''[1]), ylab = quote(U*''[2]))
+```
+
+
+#### Nested Archimedean copulas
+An $Archimedean \space copula$ is a copula of the form $C(u) = \psi(\psi^{-1}(u_{1}) + \cdots + \psi^{-1}(u_{d}), \textbf{u} \in [0,1]^{d},$ for some generator function $\psi$. A $generator$ is a nonincreasing continuous function $\psi: [0, \infty] \rightarrow [0,1]$ which satisfies $\psi(0) = 1$ and $\psi(\infty) = 0$ and is stricty decreasing on $[0, inf\{t: \psi(t) = 0\}].$ 
+
+One way of introducing asymmetry to Archimedean copulas is through nested Archimedean copulas. A $nested \space Archimedean \space copula$ is an Archimedean copula with arguments replaced by other (possibly nested) Archimedean copulas. [@hofert2019elements]
+
+New notation is introduced for $fully$ nested Archimedean copulas
+
+$C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2} = \psi_{0}(\psi_{0}^{-1}(u_{1}) + \psi_{0}^{-1}(C(u_{2}, \cdots, u_{d}; \psi_{1}, \cdots, \psi_{d-2})))$
+
+for any $d \geq 3, u_{i} \in [0,1], i \in \{1,\cdots,d\}.$ A $d-dimensional$ fully nested Archimedean copula is able to capture $d-1$ different pairwise dependencies. For the example of $d = 3$, this corresponds to 
+
+$C(\textbf u) = C(u_{1}, C(u_{2}, u_{3}; \psi_{1}; \psi_{0}) = \psi_{0}(\psi_{0}^{-1}(u_{1}) + \psi_{0}^{-1}(\psi_{1}( \psi_{1}^{-1}(u_{2}) + \psi_{1}^{-1}(u_{3})))).$
+
+For $partially$ nested Archimedean copulas
+
+$C(\textbf u) = C(C(u_{11}, \cdots, u_{1d_{1}}; \psi_{1}), \cdots, C(u_{s|1}, \cdots, u_{sd_{1}}; \psi_{0}))$
+
+$= \psi_{0}(\psi_{0}^{-1}(\psi_{1}(\psi_{1}^{-1}(u_{11}) + \cdots + \psi_{1}^{-1}(u_{1d_{1}}))) + \cdots + \psi_{0}^{-1}(\psi_{s}(\psi_{s}^{-1}(u_{s1}) + \cdots + \psi_{s}^{-1}(u_{sd_{s}}))))$
+
+$u_{ij} \in I, i \in \{1, \cdots, s\}, j \in \{1, \cdots, d_{i}\}$, where $s$ is the sum of $sectors$ and $d = \sum_{i=1}^{s} d_{i}$ is the dimension. 
+
+In order for $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2})$ to be a valid copula, $\psi_{i} \in \psi_{\infty}$ for $ i\in \{0, \cdots, d-2\}$ has to satisfy that $\psi_{k}^{-1} \space o \space \psi_{k+1}$ is completely monotone derivative for any $k \in \{0, \cdots, d-3\}$. Table 2 lists generators that are give completely monotone. 
+
+#### Table 2: Completely monotone Archimedean generators with parameter restrictions for sufficient nesting condition - Nelsen (1998).
+
+|Family |$\vartheta_{i}$|                   $\psi_{i}(t)$                          |          $(\psi_{0}^{-1}$ o $\psi_{0}^{-1})'$ c.m.                               |
+|-------|---------------|----------------------------------------------------------|----------------------------------------------------------------------------------|
+|Clayton| $(0, \infty)$ | $(1+t)^{-1/\vartheta_{i}}$                               | $\vartheta_{0}, \vartheta_{1} \in (0, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|AMH    | $[0, 1)$      | $(1-\vartheta_{i})/(e^{t}-\vartheta_{i})$                | $\vartheta_{0}, \vartheta_{1} \in [0, 1) : \vartheta_{0} \leq \vartheta_{1}$     |
+|Gumbel | $[1, \infty)$ | exp$(-1^{1/\vartheta_{i}})$                              | $\vartheta_{0}, \vartheta_{1} \in (0, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|Frank  | $(0, \infty)$ | $-($log$(e^{-t}(e^{-\vartheta_{i}}-1)+1))/\vartheta_{i}$ | $\vartheta_{0}, \vartheta_{1} \in [1, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|Joe    | $[1, \infty)$ | $1-(1-e^{-t})^{1/\vartheta_{i}}$                         | $\vartheta_{0}, \vartheta_{1} \in [1, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|12     | $[1, \infty)$ | $(1+t^{1/\vartheta_{i}})^{-1}$                           | $\vartheta_{0}, \vartheta_{1} \in [1, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|13     | $1, \infty)$  | exp$(1-(1+t)^{1/\vartheta_{i}})$                         | $\vartheta_{0}, \vartheta_{1} \in [1, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|14     | $[1, \infty)$ | $(1+t^{1/\vartheta_{i}})^{-\vartheta_{i}}$               | $\vartheta_{0}, \vartheta_{1} \in [1, \infty) : \vartheta_{0} \in \mathbb{N}, \leq\vartheta_{1}/\vartheta_{0} \in \mathbb{N}$ |
+|19     | $(0, \infty)$ | $\vartheta_{i}/$log$(t+e^{\vartheta_{i}})$               | $\vartheta_{0}, \vartheta_{1} \in (0, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+|20     | $(0, \infty)$ | $($log$(t+e))^{-1/\vartheta_{i}}$                        | $\vartheta_{0}, \vartheta_{1} \in (0, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
+
+
+If generators of nested Archimedean copulas are from different families, the copula generators will be evaluated pair-wise and may not satisfy the sufficient condition. Table 3 lists parameter constraints for generators to be completely monotone, which results in a valid nesting structure. [@hofert2008sampling] 
+
+#### Table 3: Proper family combination and parameter restrictions for sufficient nesting condition - Nelsen (1998). 
+
+|Family combination |$\vartheta_{0}$|   $\vartheta_{1}$  |  $(\psi_{0}^{-1}$ o $\psi_{0}^{-1})'$ c.m. |
+|-------------------|---------------|--------------------|--------------------------------------------|
+|(Clayton, 12)      | $(0, \infty)$ |   $[1, \infty)$    | $\vartheta_{0}\in (0,1]$                   |
+|(Clayton, 14)      | $(0, \infty)$ |   $[1, \infty)$    | $\vartheta_{0}\vartheta_{1} \in (0, 1]$    |                            
+|(Clayton, 19)      | $(0, \infty)$ |   $(0, \infty)$    | $\vartheta_{0} \in (0, 1]$                 |                          
+|(Clayton, 20)      | $(0, \infty)$ |   $(0, \infty)$    | $\vartheta_{0} \leq \vartheta_{1} $        |                                  
+|(Gumbel, Clayton)  | $[0,1)$       |   $(0, \infty)$    | $\vartheta_{1} \in [1, \infty)$            |                           
+|(Gumbel, 19)       | $[0,1)$       |   $(0, \infty)$    | any $\vartheta_{0}, \vartheta_{1}$         |                                    
+|(Gumbel, 20)       | $[0,1)$       |   $(0, \infty)$    | any $\vartheta_{0}, \vartheta_{1}$         |                                   
+
+### 2. Functionality in copula and HAC packages
+The HAC package provides methods for hierarchical Archimedean copulae (HAC) to recover and estimate the parameters of HAC copulae. 
+HAC generalize Archimedean copulas by substituting marginal dstribution by a further HAC.
+
+The first iteration stop begins with bivariate copula to every copula pair. The couple of variables with strongest dependency is selected. The estimator of parameter at this level is denoted by $\hat{\theta}_{1}$ and the set of indices of the variables by $I_{1}$. The selected ouple is joined to define the pseudo-variable $Z_{I_{1}} = C\{(I_{1};\hat{\theta}_{1};\phi_{1}\}$. We repeat the same procedure for the remaining variables to determine the estimated structure of copulas. Pseudo-variables are considered functions of underlying random variables $U_{1},...,U_{d}$. Estimation of copula: estimate the parameter of copula at the first hierarchial level assuming that the marginal is provided. The next level copula parameter is estimated with the margins and previously estimated parameter at lower levels. To allow more sophisticated structure, aggregating the variables of estimated copula is possible if the absolute value of the difference of two successive nodes is smaller than a fixed small threshold. [@okhrin2012hierarchical] 
+
+There are 4 ways to estimate HAC [@okhrin2012hierarchical]:
+
+1. Full ML (FML) estimation which is based on complete log-likelihood and a predetermined structure. 
+
+2. ML setup is based on realized pseudo-variables. The pseudo-variable for the variables $U_{k}$ and $U_{l}$ are computed as $Z_{kl}  = \phi[2\phi^{-1}\{ max(U_{k}, U_{l})\}]$ so that the bivariate density is maximized with respect to copula parameter at each step of the procedure. 
+
+3. The recursive ML (RML) which has the log-likelihood corresponding at each estimation step to the full log-likelihood for the marginal at that step.
+
+4. The penalized ML (PML) estimation determines $\epsilon_{n}$ to join subsequent nodes if $\hat{\theta}_{l} - \hat{\theta}_{k(l)} < \epsilon_{n}$, where the parameter estimate at the higher hierarchical level is denoted by $\hat{\theta}_{k(l)}$ and the lower by $\hat{\theta}_{l}$. These tuning parameters have to be
+determined at each stage of the estimation procedure. 
+
+### 3. Simulation Study 
+
+\bibliography{bibliography}
+\bibliographystyle{plainnat}
