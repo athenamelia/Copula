@@ -1,23 +1,25 @@
 library(copula)
 library(lattice)
 
-test_that("get_density works, no children", {
+test_that("dncopula works, no children", {
   tau <- c(0.05, 0.1) # Kendall's tau
   th <- iTau(archmCopula("Clayton"), tau = tau) # corresponding parameters
 
-  nlist_no_children <- list("Clayton", th[1], 1:2)
+  nac_node_no_children <- new_nac_node("Clayton", th[1], 1:2, list())
   U <- matrix(runif(n=200), nrow = 100, ncol = 2)
 
   density_no_children <- dCopula(U[,1:2], claytonCopula(th[1], dim = 2), log = TRUE)
-  expect_equal(get_density(nlist_no_children, U), density_no_children)
+  expect_equal(dncopula(nac_node_no_children, U), density_no_children)
 })
 
-test_that("get_density works, with NULL", {
+test_that("dncopula works, with NULL", {
   tau <- c(0.05, 0.1, 0.2) # Kendall's tau
   th <- iTau(archmCopula("Frank"), tau = tau) # corresponding parameters
 
-  nlist_null <- list("Frank", th[1], NULL, list(list("Frank", th[2], 1:2),
-                                                list("Frank", th[3], 3:4)))
+  nac_node_child1 <- new_nac_node("Frank", th[2], 1:2, list())
+  nac_node_child2 <- new_nac_node("Frank", th[3], 3:4, list())
+  nac_node_null <- new_nac_node("Frank", th[1], NULL, list(nac_node_child1, nac_node_child2))
+
   U <- matrix(runif(n=200), nrow = 100, ncol = 4)
 
   density_child1 <- dCopula(U[,1:2], frankCopula(th[2], dim = 2), log = TRUE)
@@ -31,14 +33,16 @@ test_that("get_density works, with NULL", {
   density_parent <- dCopula(cbind(cdf_child1, cdf_child2), frankCopula(th[1], dim = 2), log = TRUE)
   density_null <- density_parent + density_child1 + density_child2
 
-  expect_equal(get_density(nlist_null, U), density_null)
+  expect_equal(dncopula(nac_node_null, U), density_null)
 })
 
-test_that("get_density works, normal listing structure", {
+test_that("dncopula works, normal listing structure", {
   tau <- c(0.05, 0.1) # Kendall's tau
   th <- iTau(archmCopula("Clayton"), tau = tau) # corresponding parameters
 
-  nlist <- list("Clayton", th[1], 1:2, list(list("Clayton", th[2], 3:4)))
+  nac_node_child <- new_nac_node("Clayton", th[2], 3:4, list())
+  nac_node_normal <- new_nac_node("Clayton", th[1], 1:2, list(nac_node_child))
+
   U <- matrix(runif(n=200), nrow = 100, ncol = 4)
 
   density_child <- dCopula(U[,3:4], claytonCopula(th[2], dim = 2), log = TRUE)
@@ -48,17 +52,25 @@ test_that("get_density works, normal listing structure", {
   density_parent <- dCopula(cbind(U[,1:2], cdf_child), claytonCopula(th[1], dim = 3), log = TRUE)
   density_test <- density_parent + density_child
 
-  expect_equal(get_density(nlist, U), density_test)
+  expect_equal(dncopula(nac_node_normal, U), density_test)
 })
 
 
-test_that("get_density works, complicated nesting structure", {
+test_that("dncopula works, complicated nesting structure", {
   tau <- c(0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 0.9) # Kendall's tau
   th <- iTau(archmCopula("Clayton"), tau = tau) # corresponding parameters
 
-  nlist_complicated <- list("Clayton", th[1], NULL, list(list("Clayton", th[2], 1, list(list("Clayton", th[3], 2:3))), # NAC structure
-                                              list("Clayton", th[4], 4, list(list("Clayton", th[5], 5:6))),
-                                              list("Clayton", th[6], 7, list(list("Clayton", th[7], 8:11)))))
+  nac_node_child11 <- new_nac_node("Clayton", th[3], 2:3, list())
+  nac_node_child1 <- new_nac_node("Clayton", th[2], 1, list(nac_node_child11))
+
+  nac_node_child21 <- new_nac_node("Clayton", th[5], 5:6, list())
+  nac_node_child2 <- new_nac_node("Clayton", th[4], 4, list(nac_node_child21))
+
+  nac_node_child31 <- new_nac_node("Clayton", th[7], 8:11, list())
+  nac_node_child3 <- new_nac_node("Clayton", th[6], 7, list(nac_node_child31))
+
+  nac_node_full <- new_nac_node("Clayton", th[1], NULL, list(nac_node_child1, nac_node_child2, nac_node_child3))
+
   U <- matrix(runif(n=220), nrow = 100, ncol = 11)
 
   # density of nested children copulas
@@ -92,7 +104,7 @@ test_that("get_density works, complicated nesting structure", {
   d_test <-  (d_test_nested_cplex1 + d_test_cplex1 + (d_test_nested_cplex2 + d_test_cplex2) + (d_test_nested_cplex3 + d_test_cplex3) + d_test_parent)
 
   # check
-  expect_equal(get_density(nlist_complicated, U), d_test)
+  expect_equal(dncopula(nac_node_full, U), d_test)
 })
 
 
