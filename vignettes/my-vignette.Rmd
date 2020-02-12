@@ -1,5 +1,5 @@
 ---
-title: "MLE for nested Archimedean copulas"
+title: "An exploration of nested Archimedean copulas random forest model"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{my-vignette}
@@ -21,128 +21,130 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(ncopula)
+library(HAC)
 library(copula)
 library(gridExtra)
 library(ggplot2)
 library(readr)
+library(latex2exp)
 ```
 
 
 ### Abstract
 
-The package ncopula provides procedures for calculating maximum likelihood estimation for nested Archimedean copulas including multiple families and rotation copulas in any dimensions. This will expand to include selection of nested Archimedean copula nesting structure and an evaluation of a nested Archimedean copulas random forest model. 
+Creating statistical models that generate accurate nesting structure is challenging, especially for copula models with different strict parameter constraints. This paper provides new procedures for exploring nested Archimedean copula dependency structure and evaluating a nested Archimedean copulas random forest model by averaging multiple copulas with different hierarchical structures. The approach is built on the estimation routines in the HAC package. 
 
-Keywords: Archimedean copulas, nested Archimedean copulas, rotation copulas, random forest
+Keywords: Archimedean copulas, nested Archimedean copulas, mixture copulas, random forest
 
-### 1. Description of copulas
-#### Copulas
+### 1. Introduction
+In the "Hierarchical Archimedean Copulae: The HAC Package", Okhrin and Ristig provide methods for estimating the parameters of nested Archimedean copulas through recursion. The general procedure begins with fitting every pair of variables  with a bivariate copula model. The strongest dependency is selected and the corresponding variables are grouped together as the smallest copula at the bottom of the nested Archimedean tree. The copula value with the estimated parameter at this level $\hat{\theta}_{1}$ is now defined as a pseudo-variable $Z_{I_{1}} = C\{(I_{1};\hat{\theta}_{1};\phi_{1}\}$ where $I_{1}$ denotes the variables that are combined. It then is used to select the copula at the next level. The same procedure is repeated until a fixed threshold is reached or there is no variable left to be considered.[@okhrin2012hierarchical]
 
-Copula is a multivariate distribution function with standard uniform univariate margins $U(0,1)$ margins. The distribution function H of a d-dimensional random vector $X = (X_{1}, ..., X_{d})$ is defined
-$H(x) = P(X \leq x) = P(X_{1} \leq x_{1},..., X_{d} \leq x_{d})$, $x = (x_{1},..., x_{d}) \in R^{d}.$ [@hofert2019elements].
+One of the 4 estimation methods provided in the article is full maximum log-likelihood estimation which requires a predetermined nesting structure. We will build our procedure on this estimation routine which corresponds to method 2 in the `estimate.copula` function in the HAC package. In our algorithm, we select multiple different nesting structures based on their measure of association and construct a mixture random forest copula with these nesting structures as the component models. It turns out that the averaging the mixture of different copulas returns a valid copula, which indicates that the copula random forest is valid. Proof is represented later in this paper. 
 
-The standard uniform univariate df $F_{j}$ of $X_{j}, j \in \{1, ..., d\}$, can be obtained from the multivariate df H by $F_{j} = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R$. Thus, $F_{1},...,F_{d}$ are also called the $univariate \space margins$ or the $marginal \space dfs$ of $X$. 
+### 2. Description of copulas
+#### 2.1. Definition of copulas
 
-The code is adapted from Hofert_2018_Book_ElementsOfCopulaModelingWithR. 
-```{r}
-# Scatter plots of n = 1000 independent observations of the bivariate random vectors (X1,X2)
-wine_red <- read.csv("data/wine_red.csv")
-wine_red_df <- as.data.frame(wine_red)
-wine_red <- wine_red_df[-c(1296, 1297), -12]
-X <- wine_red
-U <- pobs(X[,1:11])
-plot(as.matrix(X), xlab = quote(X*''[1]), ylab = quote(X*''[2]))
-```
-
-```{r}
-p1 <- ggplot(mapping = aes(x = X[, 1])) + geom_histogram()
-p2 <- ggplot(mapping = aes(x = X[, 2])) + geom_histogram()
-grid.arrange(p1, p2, ncol = 2)
-```
-
-
-```{r}
-# plot pseudo-observation U
-p3 <- ggplot(mapping = aes(x = U[, 1])) + geom_histogram()
-p4 <- ggplot(mapping = aes(x = U[, 2])) + geom_histogram()
-grid.arrange(p3, p4, ncol = 2)
-```
-
-Looking at the margins plot, the points do not spread constantly. It seems that independence copula is not appropriate here. 
-
-#### Cumulative distribution function and probability distribution function calculated with a copula
-The multivariate df H is calculated via
-
-$H(x) = P(X \leq x) = P(X_{1} \leq x_{1},..., X_{d} \leq x_{d})$, $x = (x_{1},..., x_{d}) \in R^{d}.$
+Copula is a joint function that measures the dependence between variables with standard uniform margins $U(0,1)$. By Sklar's Theorem, copula is the distribution function H of a d-dimensional random vector $X = (X_{1}, ..., X_{d})$ calculated via
 
 $H(x) = C(F_{1}(x_{1}),...,F_{d}(x_{d}), x \in R^{d}$
 
-where copula $C$ represents the dependence structure of the variables and $F_{1},...,F_{d}$ represents univariate marginals which can be obtained from $F_{j}(x_{j}) = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R$.
+where copula $C$ represents the dependence structure of the variables and $F_{1},...,F_{d}$ represents univariate marginal distribution functions of $X$ such that $F_{j}(x_{j}) = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R. $[@hofert2019elements]
 
-The density c of a copula C is calculated via
+#### 2.2. Cumulative distribution function and probability distribution function calculated with a copula
+
+The cumulative distribution function, or the copula value, is calculated with the marginal distribution functions as the inputs.  
+$C(F_{1}(x_{1}),...,F_{d}(x_{d}), x \in R^{d}$
+
+The probability density function $c(u)$ is the derivative of the copula function $C(u)$ where $u_{i}$ is the density of standard uniform margins $U_{i} = U(0,1)$. 
 
 $c(u) = \frac{\partial^d}{\partial u_{d}...\partial u_{1}}C(u_{1},...,u_{d}), u \in (0,1)^{d}$
 
-For data with nonparametrically estimated margins $F_{1},...,F_{d}$, the unknown univariate marginal dfs are estimated by the (rescaled) empirical dfs of the component sample of $X_{1},...,X_{n}$.Specifically, for any $j \in \{1,...,d\}, F_{j}$ is estimated by
+#### Probability integral transformation
 
-$F_{n,j}(x) = \frac{1}{n+1}\sum_{i=1}^{n}1(X_{ij}\leq x), x \in R.$
-
-The estimated margins are used to form sample
+Since copula can only measure the dependence of variables whose margins have standard uiform distribution $\text{U}(0,1)$, we can use probability integral transformation to assure that this requirement is satisfied. The probability transformation will transform a vector of variables $X = (X_{1}, ..., X_{d})$ with $X \sim F$ into a random vector $U = F(X)$ such that $U_{1}, \cdots, U_{d} \overset{iid}{\sim} \text{U}(0,1)$. New random variable $U$ is denoted
 
 $U_{i,n} = (F_{n,1}(X_{i1}),...,F_{n,d}(X_{id})), i \in \{1,...,n\}$
 
-$U_{i,n}$ is a sample of $pseudo-observations$ from C. 
+There are two ways margins $U_{i,n}$ can be estimated: parametrically and nonparametrically. However, it is not guaranteed that the margins are correctly specified, that is, for $i \in \{1, \cdots, d\}, F_{i} \neq \mathcal{F_{i}}$, which may result in the biased $U_{i,n}$ and affect the estimation of copula parameter $\theta_{0}$. One approach to address this problem is to estimate the margins nonparametrically. The  marginal distribution functions are estimated by the empirical dfs of the component sample of $X_{1},...,X_{n}$. Specifically, for any $j \in \{1,...,d\}, F_{j}$ is estimated by
 
-Here is a single variable X_1 with values on the horizontal axis, pdf and cdf (two vertically aligned sub-figures), with a sample of values of X_{i1},... X_{in} along the horizontal axis and their correspnding pseudo-obs U_{i1}, ... U_{in} along the vertical axis in the cdf plot. 
+$F_{n,j}(x) = \frac{1}{n+1}\sum_{i=1}^{n}1(X_{ij}\leq x), x \in R.$
+
+From these nonparametrically estimated margins, we can form sample
+
+$U_{i,n} = (F_{n,1}(X_{i1}),...,F_{n,d}(X_{id})), i \in \{1,...,n\}$
+
+$U_{i,n}$ is called $pseudo-observations$ with uniform marginal distributions from which the copula parameter $\theta_{0}$ can be estimated.
+
+1) Here is a single variable $X_{1}$ with values on the horizontal axis, pdf and cdf, with a sample of values of $X_{i1},... X_{in}$ along the horizontal axis and their correspnding pseudo-obs $U_{i1}, ... U_{in}$ along the vertical axis in the cdf plot. 
 
 ```{r}
-n <- nrow(X)
-wine_data <- cbind(X,U)
-wine_data <- as.data.frame(wine_data)
-colnames(wine_data) <- c("X_1", "X_2", "X_3","X_4", "X_5", "X_6", "X_7","X_8", "X_9", "X_10","X_11", 
-                         "U_1", "U_2", "U_3","U_4", "U_5", "U_6", "U_7","U_8", "U_9", "U_10","U_11")
+# simulated data of n = 100 independent observations and 10 variables with normal distribution
+X <- matrix(rnorm(n = 100), nrow = 100, ncol = 10)
+# pseudo-observation U with uniform marginal distribution
+U <- pobs(X)
+```
 
-p5 <- ggplot(data = wine_data, mapping = aes(x = X_1, y = U_1)) +
-  stat_function(fun = pnorm, args = list(mean = mean(wine_data$X_1), sd = sqrt((n-1)/n) * sd(wine_data$X_1)), color = "black", n = n) +
-  labs(title = 'Probability density function') 
+```{r}
+n <- 100
+x <- seq(from = min(X[,1]), to = max(X[,1]), by = 0.01)
 
-p6 <- ggplot(data = wine_data, mapping = aes(x = X_1)) +
-  stat_function(fun = dnorm, args = list(mean = mean(wine_data$X_1), sd = sqrt((n-1)/n) * sd(wine_data$X_1)), color = "black", n = n) +
-  labs(title = 'Cumulative distribution function')
-grid.arrange(p5, p6, ncol = 2)
+model_fit <- data.frame(
+  x = x,
+  dfit = dnorm(x, mean = mean(X[,1]), sd = sqrt((n-1)/n) * sd(X[,1])), 
+  pfit = pnorm(x, mean = mean(X[,1]), sd = sqrt((n-1)/n) * sd(X[,1]))
+)
+
+p1 <- ggplot(data = as.data.frame(X), mapping = aes(x = X[,1])) +
+  geom_line(data = model_fit, mapping = aes(x = x, y = pfit), color = "black") +
+  labs(title = 'Cumulative distribution function') +
+  xlab(TeX("$X_{1}$")) + 
+  ylab(TeX("$U_{1}$")) 
+
+p2 <- ggplot(data = as.data.frame(X), mapping = aes(x = X[,1])) +
+  geom_line(data = model_fit, mapping = aes(x = x, y = dfit), color = "black") +
+  labs(title = 'Probability density function') +
+  xlab(TeX("$X_{1}$")) + 
+  ylab("density")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+2) Scatter plot of samples ($X_{i1}, X_{i2}$) drawn from their joint distribution and corresponding pairs ($U_{i1}, U_{i2}$) 
+
+```{r}
+p3 <- ggplot() + 
+  geom_point(data = as.data.frame(X[,1:2]), mapping = aes(x = X[,1], y = X[,2]), color = "black") +
+  xlab(TeX("$X_{1}$")) + 
+  ylab(TeX("$X_{2}$"))
+
+p4 <- ggplot() + 
+  geom_point(data = as.data.frame(U[,1:2]), mapping = aes(x = U[,1], y = U[,2]), color = "black") +
+  xlab(TeX("$U_{1}$")) + 
+  ylab(TeX("$U_{2}$"))
+
+grid.arrange(p3, p4, ncol = 2)
 ```
 
 
-2) For a pair of variables (X_1, X_2), show a scatter plot of samples (X_{i1}, X_{i2}) drawn from their joint distribution and what corresponding pairs (U_{i1}, U_{i2}) look like. Pick a few observations to highlight, to show where they fall within a large sample. 
-```{r}
-plot(X[,1:2], xlab = quote(X*''[1]), ylab = quote(X*''[2]))
-plot(U[,1:2], xlab = quote(U*''[1]), ylab = quote(U*''[2]))
-```
+#### 2.3. Nested Archimedean copulas
 
+An $Archimedean \space copula$ is a copula of the form $C(u) = \psi(\psi^{-1}(u_{1}) + \cdots + \psi^{-1}(u_{d}), \textbf{u} \in [0,1]^{d},$ for some generator function $\psi$. A $generator$ is a nonincreasing continuous function $\psi: [0, \infty] \rightarrow [0,1]$ which satisfies $\psi(0) = 1$ and $\psi(\infty) = 0$ and is stricty decreasing on $[0, inf\{t: \psi(t) = 0\}].$ [@hofert2019elements]
 
-#### Nested Archimedean copulas
-An $Archimedean \space copula$ is a copula of the form $C(u) = \psi(\psi^{-1}(u_{1}) + \cdots + \psi^{-1}(u_{d}), \textbf{u} \in [0,1]^{d},$ for some generator function $\psi$. A $generator$ is a nonincreasing continuous function $\psi: [0, \infty] \rightarrow [0,1]$ which satisfies $\psi(0) = 1$ and $\psi(\infty) = 0$ and is stricty decreasing on $[0, inf\{t: \psi(t) = 0\}].$ 
-
-One way of introducing asymmetry to Archimedean copulas is through nested Archimedean copulas. A $nested \space Archimedean \space copula$ is an Archimedean copula with arguments replaced by other (possibly nested) Archimedean copulas. [@hofert2019elements]
-
-New notation is introduced for $fully$ nested Archimedean copulas
+An extended version of Archimedean copulas is nested Archimedean copulas, which allows more flexibility through asymmetry. There are two of nesting: $fully$ and $partially$. If $d-dimensional$ the Archimedean copula is $fully$ nested, it means that each sub-copula $C(u_{i}, \cdots, u_{d})$ is nested inside an outer copula $C(u_{i+1}, \cdots, u_{d})$ recursively and it measures $d-1$ different pairwise dependencies between every couple of variables; one variable is $X_{i} = \psi_{i}(\psi_{i}^{-1})$ and the other is copula value $c(u_{i+1}, \cdots, u_{d}) = \psi_{0}^{-1}(C(u_{i+1}, \cdots, u_{d}; \psi_{i+1}, \cdots, \psi_{d-2}))$. The full notation is illustrated below:
 
 $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2} = \psi_{0}(\psi_{0}^{-1}(u_{1}) + \psi_{0}^{-1}(C(u_{2}, \cdots, u_{d}; \psi_{1}, \cdots, \psi_{d-2})))$
 
-for any $d \geq 3, u_{i} \in [0,1], i \in \{1,\cdots,d\}.$ A $d-dimensional$ fully nested Archimedean copula is able to capture $d-1$ different pairwise dependencies. For the example of $d = 3$, this corresponds to 
+$Partially$ nested Archimedean copulas contains multiple copulas that are separated from each each other, whose values are considered equivalent to pseudo-observation $U_{i}$  
 
-$C(\textbf u) = C(u_{1}, C(u_{2}, u_{3}; \psi_{1}; \psi_{0}) = \psi_{0}(\psi_{0}^{-1}(u_{1}) + \psi_{0}^{-1}(\psi_{1}( \psi_{1}^{-1}(u_{2}) + \psi_{1}^{-1}(u_{3})))).$
+$C(\textbf u) = C(C(u_{11}, \cdots, u_{1d_{1}}; \psi_{1}), \cdots, C(u_{s1}, \cdots, u_{sd_{1}}; \psi_{0}))$
 
-For $partially$ nested Archimedean copulas
+where $u_{ij} \in I, i \in \{1, \cdots, s\}, j \in \{1, \cdots, d_{i}\}$, $s$ is the sum of $sectors$ and $d = \sum_{i=1}^{s} d_{i}$ is the dimension. 
 
-$C(\textbf u) = C(C(u_{11}, \cdots, u_{1d_{1}}; \psi_{1}), \cdots, C(u_{s|1}, \cdots, u_{sd_{1}}; \psi_{0}))$
+#### 2.4. Archimedean copula parameters have constraints. 
 
-$= \psi_{0}(\psi_{0}^{-1}(\psi_{1}(\psi_{1}^{-1}(u_{11}) + \cdots + \psi_{1}^{-1}(u_{1d_{1}}))) + \cdots + \psi_{0}^{-1}(\psi_{s}(\psi_{s}^{-1}(u_{s1}) + \cdots + \psi_{s}^{-1}(u_{sd_{s}}))))$
+For $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2})$ to be a valid copula, $\psi_{i} \in \psi_{\infty}$ for $ i\in \{0, \cdots, d-2\}$ has to satisfy that $\psi_{k}^{-1} \space o \space \psi_{k+1}$ is completely monotone derivative for any $k \in \{0, \cdots, d-3\}$. These parameter contraints assure that the $sufficient \space nesting \space condition$ is satisfied. In other words, the tree structure needs to follow the increasing strength of dependency from the bottom to the top of the copula tree. Intuitively, the strongest correlated variables are joined at the lowest floor of the nested copula tree and their connection becomes weaker as we consider the outer copula. Table 2 lists generators that are give completely monotone. 
 
-$u_{ij} \in I, i \in \{1, \cdots, s\}, j \in \{1, \cdots, d_{i}\}$, where $s$ is the sum of $sectors$ and $d = \sum_{i=1}^{s} d_{i}$ is the dimension. 
-
-In order for $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2})$ to be a valid copula, $\psi_{i} \in \psi_{\infty}$ for $ i\in \{0, \cdots, d-2\}$ has to satisfy that $\psi_{k}^{-1} \space o \space \psi_{k+1}$ is completely monotone derivative for any $k \in \{0, \cdots, d-3\}$. Table 2 lists generators that are give completely monotone. 
-
-#### Table 2: Completely monotone Archimedean generators with parameter restrictions for sufficient nesting condition - Nelsen (1998).
+##### Table 2: Completely monotone Archimedean generators with parameter restrictions for sufficient nesting condition - Nelsen (1998).
 
 |Family |$\vartheta_{i}$|                   $\psi_{i}(t)$                          |          $(\psi_{0}^{-1}$ o $\psi_{0}^{-1})'$ c.m.                               |
 |-------|---------------|----------------------------------------------------------|----------------------------------------------------------------------------------|
@@ -158,9 +160,9 @@ In order for $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2})$ to be a val
 |20     | $(0, \infty)$ | $($log$(t+e))^{-1/\vartheta_{i}}$                        | $\vartheta_{0}, \vartheta_{1} \in (0, \infty) : \vartheta_{0} \leq \vartheta_{1}$|
 
 
-If generators of nested Archimedean copulas are from different families, the copula generators will be evaluated pair-wise and may not satisfy the sufficient condition. Table 3 lists parameter constraints for generators to be completely monotone, which results in a valid nesting structure. [@hofert2008sampling] 
+The copula generators will be evaluated pair-wise and may not satisfy the sufficient condition if the copulas come from different families. Table 3 lists parameter constraints for generators to be completely monotone, which results in a valid nesting structure. [@hofert2008sampling] 
 
-#### Table 3: Proper family combination and parameter restrictions for sufficient nesting condition - Nelsen (1998). 
+##### Table 3: Proper family combination and parameter restrictions for sufficient nesting condition - Nelsen (1998). 
 
 |Family combination |$\vartheta_{0}$|   $\vartheta_{1}$  |  $(\psi_{0}^{-1}$ o $\psi_{0}^{-1})'$ c.m. |
 |-------------------|---------------|--------------------|--------------------------------------------|
@@ -172,24 +174,42 @@ If generators of nested Archimedean copulas are from different families, the cop
 |(Gumbel, 19)       | $[0,1)$       |   $(0, \infty)$    | any $\vartheta_{0}, \vartheta_{1}$         |                                    
 |(Gumbel, 20)       | $[0,1)$       |   $(0, \infty)$    | any $\vartheta_{0}, \vartheta_{1}$         |                                   
 
-### 2. Functionality in copula and HAC packages
-The HAC package provides methods for hierarchical Archimedean copulae (HAC) to recover and estimate the parameters of HAC copulae. 
-HAC generalize Archimedean copulas by substituting marginal dstribution by a further HAC.
+#### 2.5. Mixture copula - a valid random forest model
 
-The first iteration stop begins with bivariate copula to every copula pair. The couple of variables with strongest dependency is selected. The estimator of parameter at this level is denoted by $\hat{\theta}_{1}$ and the set of indices of the variables by $I_{1}$. The selected ouple is joined to define the pseudo-variable $Z_{I_{1}} = C\{(I_{1};\hat{\theta}_{1};\phi_{1}\}$. We repeat the same procedure for the remaining variables to determine the estimated structure of copulas. Pseudo-variables are considered functions of underlying random variables $U_{1},...,U_{d}$. Estimation of copula: estimate the parameter of copula at the first hierarchial level assuming that the marginal is provided. The next level copula parameter is estimated with the margins and previously estimated parameter at lower levels. To allow more sophisticated structure, aggregating the variables of estimated copula is possible if the absolute value of the difference of two successive nodes is smaller than a fixed small threshold. [@okhrin2012hierarchical] 
+A mixture of copulas is a combination of $d$-dimensional copulas with $d \geq 2$, each copula with a specific weight such that $0 \leq w_{k} \leq 1$ and $\sum_{k=1}^{m} W_{k} = 1$. Assume that each component copula $C_{k} for k \in \{1, \cdots, m\}$ has the corresponding density $c_{k}$, the mixture copula $\text{mix}_{w}(C_{1}, \cdots, C_{m})$ has density 
 
-There are 4 ways to estimate HAC [@okhrin2012hierarchical]:
+$\text{mix}_{w}(c_{1}, \cdots, c_{m})(\textbf{u}) = \sum_{k=1}^{m}w_{k}c_{k}(\textbf{u})$ [@hofert2019elements]
 
-1. Full ML (FML) estimation which is based on complete log-likelihood and a predetermined structure. 
+Since each tree structure meets $sufficient \space nesting \space condition$ with satisfying parameters for corresponding copula families, the mixture copula is constructed based on valid component copula models. Thus, it is plausible to combine different tree structures to obtain a random forest copula model. Each nesting structure now is considered as a variable, that is, $U_{k} \sim C_{k}, k \in \{1, \cdots, m\}$. The full notation for random forest copula model is 
 
-2. ML setup is based on realized pseudo-variables. The pseudo-variable for the variables $U_{k}$ and $U_{l}$ are computed as $Z_{kl}  = \phi[2\phi^{-1}\{ max(U_{k}, U_{l})\}]$ so that the bivariate density is maximized with respect to copula parameter at each step of the procedure. 
+$\text{mix}(C_{1}, \cdots, C_{m})(\textbf{u}) = \text{mix}(U_{1}, \cdots, U_{m})(\textbf{u}), \textbf{u} \in [0,1]^{d}$ 
 
-3. The recursive ML (RML) which has the log-likelihood corresponding at each estimation step to the full log-likelihood for the marginal at that step.
+In the random forest model, all component copula models will have equal weight $W_{C_{i}} = \frac{1}{m}$ where $i \in \{1, \cdots, m \}$; each component copula model is trained on $\frac{2}{3}$ of the dataset with replacement. With the bootstrap aggregation technique, random forest model guarantees that each component copula model is independent of each other and it improves the model performance by decreasing the variance of all component copula models. The parameter of this random forest copula model is the average of the estimates of the component models.
 
-4. The penalized ML (PML) estimation determines $\epsilon_{n}$ to join subsequent nodes if $\hat{\theta}_{l} - \hat{\theta}_{k(l)} < \epsilon_{n}$, where the parameter estimate at the higher hierarchical level is denoted by $\hat{\theta}_{k(l)}$ and the lower by $\hat{\theta}_{l}$. These tuning parameters have to be
-determined at each stage of the estimation procedure. 
+### 3. Methods to construct a random forest copula model
+#### 3.1. Selecting copula structure of each component copula model
 
-### 3. Simulation Study 
+Our algorithm produces multiple different tree structures based on the correlation of the variables provided when running the method. Naturally, the most correlated pair of variables is grouped at the bottom of the tree. However, this recursive approach is likely to determine only one possible tree structure. For the algorithm to produce more than one possible hierarchical structure, flexibility is introduced to the method by evaluating the association among more than two variables or determining whether certain copulas are $siblings$, that is, they are nested within the same parent copula, or they have $parent-child$ relationship. This could be done by setting a user-specficied threshold to decide the hierarchical ranking in the each copula family tree. 
+
+#### 3.2. Selecting copula family of each component copula model
+
+Each tree in the random forest is family consistent. In other words, each component model is a nested Archimedean copula composed of small sub-copulas that belong to the same copula family. We decide to construct the random forest this way because each copula family has different parameter restrictions for $sufficient \space nesting \space condition$ and combining different families is very complicated with more parameter restrictions. In addition to that challenge, only one common family combination Clayton - Gumbel is proved to satisfy the nesting condition, while others remain unknown. 
+
+Copula family is determined based on the tail dependence of bivariate distributions. Different copula families have different pattern in the depedence of their bivariate tails. Particularly, Clayton copula has lower tail dependence, while Gumbel copula has upper tail dependence. An alternative strategy is to use $Rosenblatt \space transform$ as a graphical goodness-of-fit test to determine the appropriate copula because of the property 
+
+given copula $C'$$\textbf{U} \sim C$, $R_{C'}(\textbf{U}) \sim \prod$ if and only if $C' = C$. [@hofert2019elements]
+
+#### 3.3. Constructing random forest copula model
+
+Once we have obtained multiple different nesting structures based on the strength of their correlation, the next step is to construct a mixture random forest copula with these nesting structures as the component copula trees. The parameters of these component model are estimated with full MLE method in the `estimate.copula` function provided by the HAC package. After these parameters are estimated, they will be replaced in the corresponding nesting structures and in the random forest copula model.  
+
+The estimate of the random forest copula model is the average of the estimated parameters of the most outer copula of each tree. Specifically, $\theta_{rf} = \frac{1}{m} \sum_{k=1}^{m}\theta_{k}$ where $\theta_{k}$ is calculated based on the estimated parameters $\theta_{k1}, \cdots, \theta_{kd}$ from component copula $C_{k}$ for $k \in \{1, \cdots, m\}$. The mean log-likelihood of the random forest copula model is expected to be larger than any of each component copula tree, indicating that the random forest copula is superior. 
+
+### 4. Simulation Studies
+#### 4.1. Data simulation from a single NAC 
+### 5. Applications
+### 6. Discussion
+### 7. References
 
 \bibliography{bibliography}
 \bibliographystyle{plainnat}
