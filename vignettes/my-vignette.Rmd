@@ -59,7 +59,7 @@ The probability density function $c(u)$ is the derivative of the copula function
 
 $c(u) = \frac{\partial^d}{\partial u_{d}...\partial u_{1}}C(u_{1},...,u_{d}), u \in (0,1)^{d}$
 
-#### Probability integral transformation
+#### 2.3. Probability integral transformation
 
 Since copula can only measure the dependence of variables whose margins have standard uiform distribution $\text{U}(0,1)$, we can use probability integral transformation to assure that this requirement is satisfied. The probability transformation will transform a vector of variables $X = (X_{1}, ..., X_{d})$ with $X \sim F$ into a random vector $U = F(X)$ such that $U_{1}, \cdots, U_{d} \overset{iid}{\sim} \text{U}(0,1)$. New random variable $U$ is denoted
 
@@ -189,7 +189,7 @@ In the random forest model, all component copula models will have equal weight $
 ### 3. Methods to construct a random forest copula model
 #### 3.1. Selecting copula structure of each component copula model
 
-Our algorithm produces multiple different tree structures based on the correlation of the variables provided when running the method. Naturally, the most correlated pair of variables is grouped at the bottom of the tree. However, this recursive approach is likely to determine only one possible tree structure. For the algorithm to produce more than one possible hierarchical structure, flexibility is introduced to the method by evaluating the association among more than two variables or determining whether certain copulas are $siblings$, that is, they are nested within the same parent copula, or they have $parent-child$ relationship. This could be done by setting a user-specficied threshold to decide the hierarchical ranking in the each copula family tree. 
+Our algorithm produces multiple different tree structures based on the correlation of the variables provided when running the method. Naturally, the most correlated pair of variables is grouped at the bottom of the tree. However, this recursive approach is likely to determine only one possible tree structure. For the algorithm to produce more than one possible hierarchical structure, flexibility is introduced to the method by evaluating the association among more than two variables or determining whether certain copulas are $siblings$, that is, they are nested within the same parent copula, or they have $parent-child$ relationship. This could be done by setting a user-specficied threshold to decide the hierarchical ranking and aggregation possibilities in the each tree. 
 
 #### 3.2. Selecting copula family of each component copula model
 
@@ -207,7 +207,73 @@ The estimate of the random forest copula model is the average of the estimated p
 
 ### 4. Simulation Studies
 #### 4.1. Data simulation from a single NAC 
+
+This code below is adapted from Hierarchical Archimedean Copulae: The HAC package by Okhrin, Ristig. @okhrin2012hierarchical
+
+```{r}
+# sample data from the book, type 1 Gumbel copula
+tree = list(list("X1", "X5", 3), list("X2", "X3", "X4", 4), 2)
+HAC = hac(type = 1, tree = tree) 
+x = rHAC(100, HAC)
+est.obj = estimate.copula(x, method = 2, hac = HAC, epsilon = 0.1)
+est.obj
+
+# our similated data
+rtree <- list(list(list("U2", "U9", 1.5), list("U6", "U7", 7.5), 0.7), 
+     list(list("U10", "U11", 1.3), list(list(list(list("U1", "U3", 5.25), "U8", 3.9), "U4", 2.7), "U5", 1.8), 0.31), 0)
+model <- hac(type = 1, tree = rtree) 
+# U_sample <- rHAC(100, model)
+# result <- estimate.copula(U_sample, method = 2, hac = model, epsilon = 0.1)
+```
+
 ### 5. Applications
+```{r}
+# a single “optimal” NAC as selected by the estimation function from the HAC package
+wine_red <- read.csv("data/wine_red.csv")
+wine_red_df <- as.data.frame(wine_red)
+X  <- wine_red_df[-c(1296, 1297), -12]
+U_pobs <- pobs(X[,1:11])
+colnames(U_pobs) <- c("U1", "U2", "U3","U4", "U5", "U6", "U7","U8", "U9", "U10","U11")
+n <- nrow(U_pobs)
+
+# Frank tree - type 5
+tree1 <- list(list(list("U2", "U9", 1.5), list("U6", "U7", 7.5), 0.7), 
+     list(list("U10", "U11", 1.3), list(list(list(list("U1", "U3", 5.25), "U8", 3.9), "U4", 2.7), "U5", 1.8), 0.31), 0)
+HAC1 <- hac(type = 5, tree = tree1) 
+est.tree1 <- estimate.copula(U_pobs, method = 2, hac = HAC1, epsilon = 0.1)
+est.tree1
+
+# Gumbel tree - type 1
+tree2 <- list(list(list("U6", "U7", 2), list("U2", "U9", 1.15), 1.05),
+              list(list(list(list(list(list("U1", "U8", 1.8), "U3", 1.6), "U4", 1.27), "U5", 1.18), "U10", 1.13), "U11", 1.05),
+              1.15)
+HAC2 <- hac(type = 1, tree = tree2) 
+est.tree2 <- estimate.copula(U_pobs, method = 2, hac = HAC2, epsilon = 0.1)
+est.tree2
+
+# Clayton tree - type 3
+tree3 <- list(list(list("U11", "U9", 0.21), "U10", 0.11), 
+              list(list(list(list(list("U1", "U8", 1.09), "U3", 0.86), "U4", 0.46), "U5", 0.34),
+                    list(list("U6", "U7", 2.05), "U2", 0.13), 0), 0)
+
+HAC3 <- hac(type = 3, tree = tree3) 
+est.tree3 <- estimate.copula(U_pobs, method = 2, hac = HAC3, epsilon = 0.1)
+est.tree3
+
+# method 1
+est_hac_frank <- estimate.copula(U_pobs, type = 5) # not work if use U
+est_hac_frank
+plot(est_hac_frank)
+
+est_hac_gumbel <- estimate.copula(U_pobs, type = 1) # not work if use U
+est_hac_gumbel
+plot(est_hac_gumbel)
+
+est_hac_clayton <- estimate.copula(U_pobs, type = 3) # not work if use U
+est_hac_clayton
+plot(est_hac_clayton)
+```
+
 ### 6. Discussion
 ### 7. References
 
