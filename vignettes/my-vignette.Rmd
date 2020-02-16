@@ -26,7 +26,9 @@ library(copula)
 library(gridExtra)
 library(ggplot2)
 library(readr)
+library(MASS)
 library(latex2exp)
+library(GGally)
 ```
 
 
@@ -39,7 +41,7 @@ Keywords: Archimedean copulas, nested Archimedean copulas, mixture copulas, rand
 ### 1. Introduction
 In the "Hierarchical Archimedean Copulae: The HAC Package", Okhrin and Ristig provide methods for estimating the parameters of nested Archimedean copulas through recursion. The general procedure begins with fitting every pair of variables  with a bivariate copula model. The strongest dependency is selected and the corresponding variables are grouped together as the smallest copula at the bottom of the nested Archimedean tree. The copula value with the estimated parameter at this level $\hat{\theta}_{1}$ is now defined as a pseudo-variable $Z_{I_{1}} = C\{(I_{1};\hat{\theta}_{1};\phi_{1}\}$ where $I_{1}$ denotes the variables that are combined. It then is used to select the copula at the next level. The same procedure is repeated until a fixed threshold is reached or there is no variable left to be considered.[@okhrin2012hierarchical]
 
-One of the 4 estimation methods provided in the article is full maximum log-likelihood estimation which requires a predetermined nesting structure. We will build our procedure on this estimation routine which corresponds to method 2 in the `estimate.copula` function in the HAC package. In our algorithm, we select multiple different nesting structures based on their measure of association and construct a mixture random forest copula with these nesting structures as the component models. It turns out that the averaging the mixture of different copulas returns a valid copula, which indicates that the copula random forest is valid. Proof is represented later in this paper. 
+One of the 4 estimation methods provided in the article is quasi maximum log-likelihood estimation which requires a predetermined nesting structure. We will build our procedure on this estimation routine which corresponds to method 1 in the `estimate.copula` function in the HAC package. In our algorithm, we select multiple different nesting structures based on their measure of association and construct a random forest copula with these nesting structures as the component models. It turns out that the averaging the mixture of different copulas returns a valid copula, which indicates that the random forest copula is valid. Proof is represented later in this paper. 
 
 ### 2. Description of copulas
 #### 2.1. Definition of copulas
@@ -48,7 +50,7 @@ Copula is a joint function that measures the dependence between variables with s
 
 $H(x) = C(F_{1}(x_{1}),...,F_{d}(x_{d}), x \in R^{d}$
 
-where copula $C$ represents the dependence structure of the variables and $F_{1},...,F_{d}$ represents univariate marginal distribution functions of $X$ such that $F_{j}(x_{j}) = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R. $[@hofert2019elements]
+where copula $C$ represents the dependence structure of the variables and $F_{1},...,F_{d}$ represents univariate marginal distribution functions of $X$ such that $F_{j}(x_{j}) = H(\infty,...,\infty,x_{j},\infty,...,\infty), x_{j} \in R.$ [@hofert2019elements]
 
 #### 2.2. Cumulative distribution function and probability distribution function calculated with a copula
 
@@ -61,7 +63,7 @@ $c(u) = \frac{\partial^d}{\partial u_{d}...\partial u_{1}}C(u_{1},...,u_{d}), u 
 
 #### 2.3. Probability integral transformation
 
-Since copula can only measure the dependence of variables whose margins have standard uiform distribution $\text{U}(0,1)$, we can use probability integral transformation to assure that this requirement is satisfied. The probability transformation will transform a vector of variables $X = (X_{1}, ..., X_{d})$ with $X \sim F$ into a random vector $U = F(X)$ such that $U_{1}, \cdots, U_{d} \overset{iid}{\sim} \text{U}(0,1)$. New random variable $U$ is denoted
+Since copula can only measure the dependence of variables whose margins have standard uniform distribution $\text{U}(0,1)$, we can use probability integral transformation to assure that this condition is satisfied. The probability transformation will transform a vector of variables $X = (X_{1}, ..., X_{d})$ with $X \sim F$ into a random vector $U = F(X)$ such that $U_{1}, \cdots, U_{d} \overset{iid}{\sim} \text{U}(0,1)$. New random variable $U$ is denoted
 
 $U_{i,n} = (F_{n,1}(X_{i1}),...,F_{n,d}(X_{id})), i \in \{1,...,n\}$
 
@@ -79,7 +81,7 @@ $U_{i,n}$ is called $pseudo-observations$ with uniform marginal distributions fr
 
 ```{r}
 # simulated data of n = 100 independent observations and 10 variables with normal distribution
-X <- matrix(rnorm(n = 100), nrow = 100, ncol = 10)
+X <- matrix(rnorm(n = 100*10), nrow = 100, ncol = 10)
 # pseudo-observation U with uniform marginal distribution
 U <- pobs(X)
 ```
@@ -130,7 +132,7 @@ grid.arrange(p3, p4, ncol = 2)
 
 An $Archimedean \space copula$ is a copula of the form $C(u) = \psi(\psi^{-1}(u_{1}) + \cdots + \psi^{-1}(u_{d}), \textbf{u} \in [0,1]^{d},$ for some generator function $\psi$. A $generator$ is a nonincreasing continuous function $\psi: [0, \infty] \rightarrow [0,1]$ which satisfies $\psi(0) = 1$ and $\psi(\infty) = 0$ and is stricty decreasing on $[0, inf\{t: \psi(t) = 0\}].$ [@hofert2019elements]
 
-An extended version of Archimedean copulas is nested Archimedean copulas, which allows more flexibility through asymmetry. There are two of nesting: $fully$ and $partially$. If $d-dimensional$ the Archimedean copula is $fully$ nested, it means that each sub-copula $C(u_{i}, \cdots, u_{d})$ is nested inside an outer copula $C(u_{i+1}, \cdots, u_{d})$ recursively and it measures $d-1$ different pairwise dependencies between every couple of variables; one variable is $X_{i} = \psi_{i}(\psi_{i}^{-1})$ and the other is copula value $c(u_{i+1}, \cdots, u_{d}) = \psi_{0}^{-1}(C(u_{i+1}, \cdots, u_{d}; \psi_{i+1}, \cdots, \psi_{d-2}))$. The full notation is illustrated below:
+An extended version of Archimedean copulas is nested Archimedean copulas, which allows more flexibility with asymmetry. There are two of nesting: $fully$ and $partially$. If $d-dimensional$ the Archimedean copula is $fully$ nested, it means that each sub-copula $C(u_{i}, \cdots, u_{d})$ is nested inside an outer copula $C(u_{i+1}, \cdots, u_{d})$ recursively and it measures $d-1$ different pairwise dependencies between every couple of variables; one variable is $X_{i} = \psi_{i}(\psi_{i}^{-1})$ and the other is copula value $c(u_{i+1}, \cdots, u_{d}) = \psi_{0}^{-1}(C(u_{i+1}, \cdots, u_{d}; \psi_{i+1}, \cdots, \psi_{d-2}))$. The full notation is illustrated below:
 
 $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2} = \psi_{0}(\psi_{0}^{-1}(u_{1}) + \psi_{0}^{-1}(C(u_{2}, \cdots, u_{d}; \psi_{1}, \cdots, \psi_{d-2})))$
 
@@ -140,9 +142,9 @@ $C(\textbf u) = C(C(u_{11}, \cdots, u_{1d_{1}}; \psi_{1}), \cdots, C(u_{s1}, \cd
 
 where $u_{ij} \in I, i \in \{1, \cdots, s\}, j \in \{1, \cdots, d_{i}\}$, $s$ is the sum of $sectors$ and $d = \sum_{i=1}^{s} d_{i}$ is the dimension. 
 
-#### 2.4. Archimedean copula parameters have constraints. 
+#### 2.4. Archimedean copula parameters have restrictions 
 
-For $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2})$ to be a valid copula, $\psi_{i} \in \psi_{\infty}$ for $ i\in \{0, \cdots, d-2\}$ has to satisfy that $\psi_{k}^{-1} \space o \space \psi_{k+1}$ is completely monotone derivative for any $k \in \{0, \cdots, d-3\}$. These parameter contraints assure that the $sufficient \space nesting \space condition$ is satisfied. In other words, the tree structure needs to follow the increasing strength of dependency from the bottom to the top of the copula tree. Intuitively, the strongest correlated variables are joined at the lowest floor of the nested copula tree and their connection becomes weaker as we consider the outer copula. Table 2 lists generators that are give completely monotone. 
+For $C(u_{1}, \cdots, u_{d}; \psi_{0}, \cdots, \psi_{d-2})$ to be a valid copula, $\psi_{i} \in \psi_{\infty}$ for $i\in \{0, \cdots, d-2\}$ has to satisfy that $\psi_{k}^{-1} \space o \space \psi_{k+1}$ is completely monotone derivative for any $k \in \{0, \cdots, d-3\}$. These parameter contraints assure that the $sufficient \space nesting \space condition$ is satisfied. In other words, the tree structure needs to follow the increasing strength of dependency from the bottom to the top of the copula tree. Intuitively, the strongest correlated variables are joined at the lowest floor of the nested copula tree and their connection becomes weaker as we consider the outer copula. Table 2 lists generators that are give completely monotone. 
 
 ##### Table 2: Completely monotone Archimedean generators with parameter restrictions for sufficient nesting condition - Nelsen (1998).
 
@@ -174,22 +176,20 @@ The copula generators will be evaluated pair-wise and may not satisfy the suffic
 |(Gumbel, 19)       | $[0,1)$       |   $(0, \infty)$    | any $\vartheta_{0}, \vartheta_{1}$         |                                    
 |(Gumbel, 20)       | $[0,1)$       |   $(0, \infty)$    | any $\vartheta_{0}, \vartheta_{1}$         |                                   
 
-#### 2.5. Mixture copula - a valid random forest model
+#### 2.5. Random forest copula - a valid mixture
 
-A mixture of copulas is a combination of $d$-dimensional copulas with $d \geq 2$, each copula with a specific weight such that $0 \leq w_{k} \leq 1$ and $\sum_{k=1}^{m} W_{k} = 1$. Assume that each component copula $C_{k} for k \in \{1, \cdots, m\}$ has the corresponding density $c_{k}$, the mixture copula $\text{mix}_{w}(C_{1}, \cdots, C_{m})$ has density 
+A mixture of copulas is a combination of $d$-dimensional copulas with $d \geq 2$, each copula with a specific weight such that $0 \leq w_{k} \leq 1$ and $\sum_{k=1}^{m} W_{k} = 1$. Since each tree structure meets $sufficient \space nesting \space condition$ with satisfying parameters for corresponding copula families, the mixture copula is constructed based on valid component copula models. Assume that each component copula $C_{k} for k \in \{1, \cdots, m\}$ has the corresponding density $c_{k}$, the mixture copula $\text{mix}_{w}(C_{1}, \cdots, C_{m})$ has density 
 
 $\text{mix}_{w}(c_{1}, \cdots, c_{m})(\textbf{u}) = \sum_{k=1}^{m}w_{k}c_{k}(\textbf{u})$ [@hofert2019elements]
 
-Since each tree structure meets $sufficient \space nesting \space condition$ with satisfying parameters for corresponding copula families, the mixture copula is constructed based on valid component copula models. Thus, it is plausible to combine different tree structures to obtain a random forest copula model. Each nesting structure now is considered as a variable, that is, $U_{k} \sim C_{k}, k \in \{1, \cdots, m\}$. The full notation for random forest copula model is 
+Thus, it is plausible to combine different tree structures to obtain a random forest copula model. In the random forest copula model, all $m$ component models are copulas with equal weight $W_{C_{i}} = \frac{1}{m}$ where $i \in \{1, \cdots, m \}$; each component copula model is trained on $\frac{2}{3}$ of the original dataset with replacement. With the bootstrap aggregation technique, random forest copula model guarantees that each component copula model is independent of each other and it is expected to improve the model performance by decreasing the variance of all component copula models. 
 
-$\text{mix}(C_{1}, \cdots, C_{m})(\textbf{u}) = \text{mix}(U_{1}, \cdots, U_{m})(\textbf{u}), \textbf{u} \in [0,1]^{d}$ 
-
-In the random forest model, all component copula models will have equal weight $W_{C_{i}} = \frac{1}{m}$ where $i \in \{1, \cdots, m \}$; each component copula model is trained on $\frac{2}{3}$ of the dataset with replacement. With the bootstrap aggregation technique, random forest model guarantees that each component copula model is independent of each other and it improves the model performance by decreasing the variance of all component copula models. The parameter of this random forest copula model is the average of the estimates of the component models.
+${C}^\text{mix}(C_{1}, \cdots, C_{m})(\textbf{u}) = \frac{1}{m}C_{1}(\textbf{u}) + \cdots + \frac{1}{m}C_{m}(\textbf{u}), \textbf{u} \in [0,1]^{d}$ 
 
 ### 3. Methods to construct a random forest copula model
 #### 3.1. Selecting copula structure of each component copula model
 
-Our algorithm produces multiple different tree structures based on the correlation of the variables provided when running the method. Naturally, the most correlated pair of variables is grouped at the bottom of the tree. However, this recursive approach is likely to determine only one possible tree structure. For the algorithm to produce more than one possible hierarchical structure, flexibility is introduced to the method by evaluating the association among more than two variables or determining whether certain copulas are $siblings$, that is, they are nested within the same parent copula, or they have $parent-child$ relationship. This could be done by setting a user-specficied threshold to decide the hierarchical ranking and aggregation possibilities in the each tree. 
+Our algorithm produces multiple different tree structures based on the correlation of the variables. Naturally, the most correlated pair of variables is grouped at the bottom of the tree and the variables including the copula value of the previously grouped couple of variables are recursively evaluated pair-wise. However, this recursive approach returns only one possible tree structure. For the algorithm to produce more than one possible hierarchical structure, a more flexible approach enables evaluting the association among more than two variables at a time or determining whether certain copulas are $siblings$, that is, they are nested within the same parent copula, or $parent-child$. In addition, the strongest correlated connection might not be the most nested copula if compared to other associations, the difference in the measure of correlations is not very large. This could be done by setting a user-specficied threshold to decide the hierarchical ranking and aggregation possibilities in the each tree. 
 
 #### 3.2. Selecting copula family of each component copula model
 
@@ -197,33 +197,100 @@ Each tree in the random forest is family consistent. In other words, each compon
 
 Copula family is determined based on the tail dependence of bivariate distributions. Different copula families have different pattern in the depedence of their bivariate tails. Particularly, Clayton copula has lower tail dependence, while Gumbel copula has upper tail dependence. An alternative strategy is to use $Rosenblatt \space transform$ as a graphical goodness-of-fit test to determine the appropriate copula because of the property 
 
-given copula $C'$$\textbf{U} \sim C$, $R_{C'}(\textbf{U}) \sim \prod$ if and only if $C' = C$. [@hofert2019elements]
+given copula $C'$ and $\textbf{U} \sim C$, $R_{C'}(\textbf{U}) \sim \prod$ if and only if $C' = C$. [@hofert2019elements]
 
 #### 3.3. Constructing random forest copula model
 
-Once we have obtained multiple different nesting structures based on the strength of their correlation, the next step is to construct a mixture random forest copula with these nesting structures as the component copula trees. The parameters of these component model are estimated with full MLE method in the `estimate.copula` function provided by the HAC package. After these parameters are estimated, they will be replaced in the corresponding nesting structures and in the random forest copula model.  
-
-The estimate of the random forest copula model is the average of the estimated parameters of the most outer copula of each tree. Specifically, $\theta_{rf} = \frac{1}{m} \sum_{k=1}^{m}\theta_{k}$ where $\theta_{k}$ is calculated based on the estimated parameters $\theta_{k1}, \cdots, \theta_{kd}$ from component copula $C_{k}$ for $k \in \{1, \cdots, m\}$. The mean log-likelihood of the random forest copula model is expected to be larger than any of each component copula tree, indicating that the random forest copula is superior. 
+Once we have obtained multiple different nesting structures, the next step is to construct a random forest copula model with these nesting structures as the component copula trees. The parameters of these component model are estimated with quasi MLE approach, corresponding to the method 1 in the `estimate.copula` function in the HAC package. After these parameters are estimated, they will be updated in the corresponding nesting structures and hence, in the random forest copula model. Specifically, $\theta_{rf} = \frac{1}{m} \sum_{k=1}^{m}\theta_{k}$ where $\theta_{k}$ is calculated based on the estimated parameters $\theta_{k1}, \cdots, \theta_{kd}$ from component copula $C_{k}$ for $k \in \{1, \cdots, m\}$. The average log-likelihood value of the random forest copula model is expected to be larger than any of the component copula trees, indicating that the random forest copula is superior. 
 
 ### 4. Simulation Studies
 #### 4.1. Data simulation from a single NAC 
 
-This code below is adapted from Hierarchical Archimedean Copulae: The HAC package by Okhrin, Ristig. @okhrin2012hierarchical
+This code below is adapted from Hierarchical Archimedean Copulae: The HAC package by Okhrin, Ristig. [@okhrin2012hierarchical]
+
+The example below uses the `rHAC` function provided in the HAC package, which generates the variables randomly with a predetermined tree structure. 
 
 ```{r}
 # sample data from the book, type 1 Gumbel copula
 tree = list(list("X1", "X5", 3), list("X2", "X3", "X4", 4), 2)
 HAC = hac(type = 1, tree = tree) 
 x = rHAC(100, HAC)
-est.obj = estimate.copula(x, method = 2, hac = HAC, epsilon = 0.1)
-est.obj
+est.obj = estimate.copula(x, method = 1, hac = HAC, epsilon = 0.1)
+plot(est.obj)
+```
 
-# our similated data
-rtree <- list(list(list("U2", "U9", 1.5), list("U6", "U7", 7.5), 0.7), 
-     list(list("U10", "U11", 1.3), list(list(list(list("U1", "U3", 5.25), "U8", 3.9), "U4", 2.7), "U5", 1.8), 0.31), 0)
-model <- hac(type = 1, tree = rtree) 
-# U_sample <- rHAC(100, model)
-# result <- estimate.copula(U_sample, method = 2, hac = model, epsilon = 0.1)
+Here is an example with similated data. 
+ 
+```{r}
+# simulated data
+n <- 1000
+x_mu <- c(0, 0, 0)
+x_sigma <- matrix(c(1,.8,.7,
+                    .8,1,.3, 
+                    .7,.3,1), 3, 3)
+x_multinom <- matrix(mvrnorm(n = n, mu = x_mu , x_sigma), nrow = 100, ncol = 3)
+ggpairs(as.data.frame(x_multinom))
+
+# U obtained manually
+U_multinom <- cbind(pnorm(x_multinom[,1], mean = mean(x_multinom[,1]),
+                 sd = sqrt((n-1)/n) * sd(x_multinom[,1])),
+                   pnorm(x_multinom[,2], mean = mean(x_multinom[,2]),
+                 sd = sqrt((n-1)/n) * sd(x_multinom[,2])),
+                    pnorm(x_multinom[,3], mean = mean(x_multinom[,3]),
+                 sd = sqrt((n-1)/n) * sd(x_multinom[,3])))
+
+
+U_multinom <- cbind(pnorm(x_multinom[,1], mean = 0, sd = 1),
+                    pnorm(x_multinom[,2], mean = 0, sd = 1),
+                    pnorm(x_multinom[,3], mean = 0, sd = 1))
+hist(U_multinom[,1])
+colnames(U_multinom) <- c("U1", "U2", "U3")
+
+# using pobs function
+U_multinom_obs <- pobs(x_multinom)
+colnames(U_multinom_obs) <- c("U1", "U2", "U3")
+hist(U_multinom_obs[,1])
+
+# estimate two trees
+tree_A <- list(list("U1", "U2", 6), "U3", 5)
+modelA <- hac(type = 3, tree = tree_A) 
+est.treeA <- estimate.copula(U_multinom, method = 2, hac = modelA, epsilon = 0.1)
+est.treeA
+plot(est.treeA)
+
+tree_B <- list(list("U1", "U3", 6), "U2", 5)
+modelB <- hac(type = 3, tree = tree_B) 
+est.treeB <- estimate.copula(U_multinom, method = 2, hac = modelB, epsilon = 0.1)
+est.treeB
+plot(est.treeB)
+
+# simulate n = 1000 for the test set
+n <- 10000
+x_test <- matrix(mvrnorm(n = n, mu = x_mu , x_sigma), nrow = 100, ncol = 3)
+U_test <- cbind(pnorm(x_test[,1], mean = mean(x_test[,1]),
+                 sd = sqrt((n-1)/n) * sd(x_test[,1])),
+                    pnorm(x_test[,2], mean = mean(x_test[,2]),
+                 sd = sqrt((n-1)/n) * sd(x_test[,2])),
+                    pnorm(x_test[,3], mean = mean(x_test[,3]),
+                 sd = sqrt((n-1)/n) * sd(x_test[,3])))
+colnames(U_test) <- c("U1", "U2", "U3")
+ggpairs(as.data.frame(x_test))
+est.test_treeA <- estimate.copula(U_test, method = 2, hac = modelA)
+plot(est.test_treeA)
+est.test_treeB <- estimate.copula(U_test, method = 2, hac = modelB)
+plot(est.test_treeB)
+
+# compare log-likelihood
+update_modelA <- hac(type = 3, tree = list(list("U1", "U2", 1), "U3", 1))
+update_modelB <- hac(type = 3, tree = list(list("U1", "U3", 1.03), "U2", 1)) 
+
+density_treeA <- sum(dHAC(U_test, update_modelA))
+density_treeB <- sum(dHAC(U_test, update_modelB))
+density_mix <- density_treeA * 0.5 + density_treeB * 0.5
+
+density_treeA
+density_treeB
+density_mix
 ```
 
 ### 5. Applications
@@ -237,39 +304,39 @@ colnames(U_pobs) <- c("U1", "U2", "U3","U4", "U5", "U6", "U7","U8", "U9", "U10",
 n <- nrow(U_pobs)
 
 # Frank tree - type 5
-tree1 <- list(list(list("U2", "U9", 1.5), list("U6", "U7", 7.5), 0.7), 
-     list(list("U10", "U11", 1.3), list(list(list(list("U1", "U3", 5.25), "U8", 3.9), "U4", 2.7), "U5", 1.8), 0.31), 0)
-HAC1 <- hac(type = 5, tree = tree1) 
-est.tree1 <- estimate.copula(U_pobs, method = 2, hac = HAC1, epsilon = 0.1)
-est.tree1
+tree1 <- list(list("U2", list("U9", list("U6", "U7", 7.5), 1.5), 0.7), 
+     list(list("U10", "U11", 1.3), list(list(list(list("U1", "U3", 5.25), "U8", 3.9), "U4", 2.7), "U5", 1.8), 0.31), 0.2)
+HAC1 <- hac(type = 1, tree = tree1) 
+est.tree1 <- estimate.copula(U_pobs, method = 1, hac = HAC1, epsilon = 0.1)
+plot(est.tree1)
 
 # Gumbel tree - type 1
 tree2 <- list(list(list("U6", "U7", 2), list("U2", "U9", 1.15), 1.05),
-              list(list(list(list(list(list("U1", "U8", 1.8), "U3", 1.6), "U4", 1.27), "U5", 1.18), "U10", 1.13), "U11", 1.05),
-              1.15)
+      list(list(list(list(list(list("U1", "U8", 1.8), "U3", 1.6), "U4", 1.27), "U5", 1.18), "U10", 1.13), "U11", 1.05), 0.5)
 HAC2 <- hac(type = 1, tree = tree2) 
-est.tree2 <- estimate.copula(U_pobs, method = 2, hac = HAC2, epsilon = 0.1)
-est.tree2
+est.tree2 <- estimate.copula(U_pobs, method = 1, hac = HAC2, epsilon = 0.1)
+plot(est.tree2)
 
 # Clayton tree - type 3
-tree3 <- list(list(list("U11", "U9", 0.21), "U10", 0.11), 
-              list(list(list(list(list("U1", "U8", 1.09), "U3", 0.86), "U4", 0.46), "U5", 0.34),
-                    list(list("U6", "U7", 2.05), "U2", 0.13), 0), 0)
+tree3 <- list(list(list("U11", "U9", 6), "U10", 5), 
+              list(list(list(list(list("U1", "U8", 4), "U3", 3), "U4", 2), "U5", 1),
+                    list(list("U6", "U7", 2), "U2", 1), 0.5), 0.3)
 
 HAC3 <- hac(type = 3, tree = tree3) 
-est.tree3 <- estimate.copula(U_pobs, method = 2, hac = HAC3, epsilon = 0.1)
-est.tree3
+# error: non-finite value supplied by optim
+# est.tree3 <- estimate.copula(U_pobs, method = 1, hac = HAC3, epsilon = 0.1)
+# plot(est.tree3)
 
-# method 1
-est_hac_frank <- estimate.copula(U_pobs, type = 5) # not work if use U
+# method 1 with no predetermined tree structures
+est_hac_frank <- estimate.copula(U_pobs, type = 5)
 est_hac_frank
 plot(est_hac_frank)
 
-est_hac_gumbel <- estimate.copula(U_pobs, type = 1) # not work if use U
+est_hac_gumbel <- estimate.copula(U_pobs, type = 1) 
 est_hac_gumbel
 plot(est_hac_gumbel)
 
-est_hac_clayton <- estimate.copula(U_pobs, type = 3) # not work if use U
+est_hac_clayton <- estimate.copula(U_pobs, type = 3)
 est_hac_clayton
 plot(est_hac_clayton)
 ```
