@@ -10,7 +10,7 @@ set_family <- function(nac_Node, new_family) {
         new_family == "Gumbel" ||
         new_family == "Joe" ||
         new_family == "Independence" ||
-        new_family == "Ali") {
+        new_family == "Amh") {
           nac_Node$family <- new_family
           return(nac_Node)
     } else {

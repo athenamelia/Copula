@@ -30,7 +30,7 @@ pncopula <- function(nac_Node, U) {
       copula <- indepCopula(dim = ncol_U + ncol(V))
     } else if (family == 'Joe') {
       copula <- joeCopula(theta, dim = ncol_U + ncol(V))
-    } else if (family == 'Ali') {
+    } else if (family == 'Amh') {
       copula <- amhCopula(theta, dim = ncol_U + ncol(V))
     }
 
@@ -48,7 +48,7 @@ pncopula <- function(nac_Node, U) {
       copula <- indepCopula(dim = ncol_U)
     } else if (family == 'Joe') {
       copula <- joeCopula(theta, dim = ncol_U)
-    } else if (family == 'Ali') {
+    } else if (family == 'Amh') {
       copula <- amhCopula(theta, dim = ncol_U)
     }
 

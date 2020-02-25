@@ -22,7 +22,7 @@ dncopula <- function(nac_Node, U, log = TRUE) {
       density <- density + dCopula(U[,U_indices], indepCopula(dim = ncol_U), log = TRUE)
     } else if (family == 'Joe') {
       density <- density + dCopula(U[,U_indices], joeCopula(theta, dim = ncol_U), log = TRUE)
-    } else if (family == 'Ali') {
+    } else if (family == 'Amh') {
       density <- density + dCopula(U[,U_indices], amhCopula(theta, dim = ncol_U), log = TRUE)
     }
   }
@@ -49,7 +49,7 @@ dncopula <- function(nac_Node, U, log = TRUE) {
       density <- density + dCopula(X, indepCopula(dim = ncol(X)), log = TRUE)
     } else if (family == 'Joe') {
       density <- density + dCopula(X, joeCopula(theta, dim = ncol(X)), log = TRUE)
-    } else if (family == 'Ali') {
+    } else if (family == 'Amh') {
       density <- density + dCopula(X, amhCopula(theta, dim = ncol(X)), log = TRUE)
     }
   }

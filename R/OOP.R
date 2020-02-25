@@ -28,7 +28,7 @@ new_nac_node <- function(family = character(), theta = double(), U_indices = dou
   }
   stopifnot(is.character(family))
   stopifnot(family == "Clayton" || family == "Frank" || family == "Joe" ||
-              family == "Ali" || family == "Independence" || family == "Gumbel")
+              family == "Amh" || family == "Independence" || family == "Gumbel")
   stopifnot(is.double(theta))
   stopifnot(is.double(U_indices) || is.integer(U_indices) || is.null(U_indices))
   stopifnot(is.list(subcopula))

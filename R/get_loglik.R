@@ -1,22 +1,19 @@
-#'estimation of nested A. copula parameters
+#' Log likelihood of nested A. copula parameters
 #'
-#' @param nac_Node an NAC node
+#' @param nac_Node object of class
 #' @param U pseudo-observations
-#' @param par a vector of parameters
-#' @return result obtained from optimizing provided parameters
+#' @return Log-likelihood
 #' @export
 get_loglik <- function(nac_Node, U, par) {
-  # transform provided par (vector of real numbers) to a vector of parameter values
-  # that are within the bounds for the copula we are estimating
-  orig_par <- par
-  par <- set_theta_from_unbounded(nac_Node, par, current_index = 1)[[1]]
+  # transform provided par (vector of real numbers) to bounded
+  new_theta <- transform_theta_unbounded_to_bounded(nac_Node)
 
   # if(is.na(par)) {
   #   browser()
   # }
 
   # evaluate log-likelihood at provided parameter values
-  new_nac_Node <- update_par(nac_Node, par, current_index = 1)[[1]]
-  result <- sum(get_density(new_nac_Node, U, log = TRUE))
+  new_nac_Node <- set_par(nac_Node, new_theta)[[1]]
+  result <- sum(dncopula(new_nac_Node, U, log = TRUE))
   return(result)
 }
