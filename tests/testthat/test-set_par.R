@@ -2,7 +2,7 @@ library(copula)
 library(ncopula)
 library(lattice)
 
-test_that("update_par works", {
+test_that("set_par works", {
   tau <- c(0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 0.9) # Kendall's tau
   th <- iTau(archmCopula("Clayton"), tau = tau) # corresponding parameters
 
@@ -17,7 +17,7 @@ test_that("update_par works", {
 
   nac_node_full <- new_nac_node("Clayton", th[1], NULL, list(nac_node_child1, nac_node_child2, nac_node_child3))
 
-  U <- matrix(runif(n=220), nrow = 100, ncol = 11)
+  U <- matrix(runif(n=1100), nrow = 100, ncol = 11)
 
   new_child11 <- new_nac_node("Clayton", 30, 2:3, list())
   new_child1 <- new_nac_node("Clayton", 20, 1, list(new_child11))
@@ -30,5 +30,5 @@ test_that("update_par works", {
 
   new_node <- new_nac_node("Clayton", 10, NULL, list(new_child1, new_child2, new_child3))
 
-  expect_equal(update_par(nac_node_full, c(10, 20, 30, 40, 50, 60, 70))[[1]], new_node)
+  expect_equal(set_par(nac_node_full, c(10, 20, 30, 40, 50, 60, 70))[[1]], new_node)
 })

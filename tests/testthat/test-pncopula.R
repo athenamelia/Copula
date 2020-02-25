@@ -23,7 +23,7 @@ test_that("pncopula works, with NULL", {
   nac_node_child2 <- new_nac_node("Frank", th[3], 3:4, list())
   nac_node_null <- new_nac_node("Frank", th[1], NULL, list(nac_node_child1, nac_node_child2))
 
-  U <- matrix(runif(n=200), nrow = 100, ncol = 4)
+  U <- matrix(runif(n=400), nrow = 100, ncol = 4)
 
   nested_cc2 <- frankCopula(th[3], dim = 2)
   nested_p_test2 <- pCopula(U[,3:4], copula = nested_cc2)
@@ -35,13 +35,13 @@ test_that("pncopula works, with NULL", {
   expect_equal(pncopula(nac_node_null, U), p_test_null)
 })
 
-test_that("pncopula works, normal listing structure", {
+test_that("pncopula works, normal nesting structure", {
   tau <- c(0.05, 0.1)
   th <- iTau(archmCopula("Clayton"), tau = tau)
 
   nac_node_child <- new_nac_node("Clayton", th[2], 3:4, list())
   nac_node_normal <- new_nac_node("Clayton", th[1], 1:2, list(nac_node_child))
-  U <- matrix(runif(n=200), nrow = 100, ncol = 4)
+  U <- matrix(runif(n=400), nrow = 100, ncol = 4)
 
   nested_cc <- claytonCopula(th[2], dim = 2)
   nested_p_test <- pCopula(U[,3:4], copula = nested_cc)
@@ -65,7 +65,7 @@ test_that("pncopula works, complicated nesting structure", {
   nac_node_child3 <- new_nac_node("Clayton", th[6], 7, list(nac_node_child31))
 
   nac_node_full <- new_nac_node("Clayton", th[1], NULL, list(nac_node_child1, nac_node_child2, nac_node_child3))
-  U <- matrix(runif(n=220), nrow = 100, ncol = 11)
+  U <- matrix(runif(n=1100), nrow = 100, ncol = 11)
 
   nested_complicated_cc3 <- claytonCopula(th[7], dim = 3)
   nested_complicated_p_test3 <- pCopula(U[,8:11], copula = nested_complicated_cc3)

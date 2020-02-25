@@ -2,7 +2,7 @@ library(copula)
 library(lattice)
 
 test_that("dncopula works, no children", {
-  tau <- c(0.05, 0.1) # Kendall's tau
+  tau <- c(0.05) # Kendall's tau
   th <- iTau(archmCopula("Clayton"), tau = tau) # corresponding parameters
 
   nac_node_no_children <- new_nac_node("Clayton", th[1], 1:2, list())
@@ -20,7 +20,7 @@ test_that("dncopula works, with NULL", {
   nac_node_child2 <- new_nac_node("Frank", th[3], 3:4, list())
   nac_node_null <- new_nac_node("Frank", th[1], NULL, list(nac_node_child1, nac_node_child2))
 
-  U <- matrix(runif(n=200), nrow = 100, ncol = 4)
+  U <- matrix(runif(n=400), nrow = 100, ncol = 4)
 
   density_child1 <- dCopula(U[,1:2], frankCopula(th[2], dim = 2), log = TRUE)
   density_child2 <- dCopula(U[,3:4], frankCopula(th[3], dim = 2), log = TRUE)
@@ -36,14 +36,14 @@ test_that("dncopula works, with NULL", {
   expect_equal(dncopula(nac_node_null, U), density_null)
 })
 
-test_that("dncopula works, normal listing structure", {
+test_that("dncopula works, normal nesting structure", {
   tau <- c(0.05, 0.1) # Kendall's tau
   th <- iTau(archmCopula("Clayton"), tau = tau) # corresponding parameters
 
   nac_node_child <- new_nac_node("Clayton", th[2], 3:4, list())
   nac_node_normal <- new_nac_node("Clayton", th[1], 1:2, list(nac_node_child))
 
-  U <- matrix(runif(n=200), nrow = 100, ncol = 4)
+  U <- matrix(runif(n=400), nrow = 100, ncol = 4)
 
   density_child <- dCopula(U[,3:4], claytonCopula(th[2], dim = 2), log = TRUE)
   cc <- claytonCopula(th[2], dim = 2)
@@ -71,7 +71,7 @@ test_that("dncopula works, complicated nesting structure", {
 
   nac_node_full <- new_nac_node("Clayton", th[1], NULL, list(nac_node_child1, nac_node_child2, nac_node_child3))
 
-  U <- matrix(runif(n=220), nrow = 100, ncol = 11)
+  U <- matrix(runif(n=1100), nrow = 100, ncol = 11)
 
   # density of nested children copulas
   d_test_nested_cplex1 <- dCopula(U[,2:3], claytonCopula(th[3], dim = 2), log = TRUE)
