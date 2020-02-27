@@ -9,7 +9,7 @@ estimate_par <- function(nac_Node, U) {
   if (has_subcopula(nac_Node) == FALSE) {
     new_theta <- get_cor_theta(nac_Node, U)
     nac_Node <- set_theta(nac_Node, new_theta)
-    nac_Node <- estimate_nac(nac_Node, U)[[1]]
+    nac_Node <- estimate_nac(nac_Node, U)
   }
 
   else if (has_subcopula(nac_Node)) {
@@ -23,7 +23,7 @@ estimate_par <- function(nac_Node, U) {
 
     new_theta <- get_cor_theta(nac_Node, U)
     nac_Node <- set_theta(nac_Node, new_theta)
-    nac_Node <- estimate_nac(nac_Node, U)[[1]]
+    nac_Node <- estimate_nac(nac_Node, U)
   }
   return(nac_Node)
 }
@@ -37,7 +37,7 @@ estimate_par <- function(nac_Node, U) {
 estimate_nac <- function(nac_Node, U) {
   par <- transform_theta_bounded_to_unbounded(nac_Node)
 
-  result <- optim(par = par[1],
+  result <- optim(par = par,
                   fn = get_loglik,
                   U = U,
                   nac_Node = nac_Node,
@@ -45,8 +45,8 @@ estimate_nac <- function(nac_Node, U) {
                   control = list(fnscale = -1))
 
   estimate <- result$par
-  bounded_estimate <- transform_theta_unbounded_to_bounded(set_theta(nac_Node, estimate))
-  nac_Node <- set_theta(nac_Node, bounded_estimate)
+  bounded_estimate <- transform_theta_unbounded_to_bounded(set_par(nac_Node, estimate)[[1]])
+  nac_Node <- set_par(nac_Node, bounded_estimate)[[1]]
 
-  return(list(nac_Node, bounded_estimate))
+  return(nac_Node)
 }
