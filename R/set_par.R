@@ -20,19 +20,3 @@ set_par <- function(nac_Node, theta, current_index = 1) {
 
   return(list(nac_Node, current_index))
 }
-
-set_test <- function(nac_Node, theta) {
-  nac_Node <- set_theta(nac_Node, theta[1])
-
-  if (has_subcopula(nac_Node)) {
-    subcopulas <- count_subcopula(nac_Node)
-    for (child_index in seq_len(subcopulas)) {
-      child_copula <- get_subcopula(nac_Node, child_index)
-      child_theta <- get_theta(child_copula)
-      new_child_copula <- set_test(child_copula, child_theta)
-      nac_Node <- set_subcopula(nac_Node, child_index, new_child_copula)
-    }
-  }
-
-  return(nac_Node)
-}
