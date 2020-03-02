@@ -34,14 +34,14 @@ library(GGally)
 
 ### Abstract
 
-Creating statistical models that generate accurate nesting structure is challenging, especially for copula models with different strict parameter constraints. This paper provides new procedures for exploring nested Archimedean copula dependency structure and evaluating a nested Archimedean copulas random forest model by averaging multiple copulas with different hierarchical structures. The approach is built on the estimation routines in the HAC package. 
+Creating statistical models that generate accurate nesting structure is challenging, especially for copula models with different strict parameter constraints. This paper provides new procedures for exploring nested Archimedean copula dependency structure and evaluating a nested Archimedean copulas random forest model by averaging multiple copulas with different hierarchical structures. Parameters of each component copula is estimated separately with maximum log-likelihood estimation. 
 
-Keywords: Archimedean copulas, nested Archimedean copulas, mixture copulas, random forest
+Keywords: Archimedean copulas, nested Archimedean copulas, mixture copulas, random forest, maximum log-likelihood
 
 ### 1. Introduction
-In the "Hierarchical Archimedean Copulae: The HAC Package", Okhrin and Ristig provide methods for estimating the parameters of nested Archimedean copulas through recursion. The general procedure begins with fitting every pair of variables  with a bivariate copula model. The strongest dependency is selected and the corresponding variables are grouped together as the smallest copula at the bottom of the nested Archimedean tree. The copula value with the estimated parameter at this level $\hat{\theta}_{1}$ is now defined as a pseudo-variable $Z_{I_{1}} = C\{(I_{1};\hat{\theta}_{1};\phi_{1}\}$ where $I_{1}$ denotes the variables that are combined. It then is used to select the copula at the next level. The same procedure is repeated until a fixed threshold is reached or there is no variable left to be considered.[@okhrin2012hierarchical]
+Parameters of nested Archimedean copulas can be estimated through recursion. The general procedure begins with fitting variables with a bivariate or trivariate copula model. The strongest dependency is selected and the corresponding variables are grouped together as the smallest copula at the bottom of the nested Archimedean tree. The copula value calculated with the estimated parameter $\hat{\theta}_{1}$ at this level and the selected variables is now defined as a pseudo-variable $C\{(I_{1};\hat{\theta}_{1};\phi_{1}\}$ where $I_{1}$ denotes the variables that are combined. It then is used to estimate the copula parameters at the next level. The same procedure is repeated until a fixed threshold is reached or there is no variable left to be considered. The similar estimation routine is mentioned in 'Hierarchical Archimedean Copulae: The HAC Package' where the author Okhrin and Ristig discuss 4 estimation methods using maximum log-likelihood estimation. 
 
-One of the 4 estimation methods provided in the article is quasi maximum log-likelihood estimation which requires a predetermined nesting structure. We will build our procedure on this estimation routine which corresponds to method 1 in the `estimate.copula` function in the HAC package. In our algorithm, we select multiple different nesting structures based on their measure of association and construct a random forest copula with these nesting structures as the component models. It turns out that the averaging the mixture of different copulas returns a valid copula, which indicates that the random forest copula is valid. Proof is represented later in this paper. 
+In our algorithm, we select multiple different nesting structures based on their measure of association and estimate the copula parameters through maximum log-likelihood with predetermined tree structures. We then  construct a random forest copula with these estimated copula trees as the component models. It can be proven that the averaging the mixture of different copulas returns a valid copula, which indicates that the random forest copula is valid. Proof is represented later in this paper. 
 
 ### 2. Description of copulas
 #### 2.1. Definition of copulas
@@ -81,6 +81,7 @@ $U_{i,n}$ is called $pseudo-observations$ with uniform marginal distributions fr
 
 ```{r}
 # simulated data of n = 100 independent observations and 10 variables with normal distribution
+set.seed(8448)
 X <- matrix(rnorm(n = 100*10), nrow = 100, ncol = 10)
 # pseudo-observation U with uniform marginal distribution
 U <- pobs(X)
@@ -195,101 +196,72 @@ Our algorithm produces multiple different tree structures based on the correlati
 
 Each tree in the random forest is family consistent. In other words, each component model is a nested Archimedean copula composed of small sub-copulas that belong to the same copula family. We decide to construct the random forest this way because each copula family has different parameter restrictions for $sufficient \space nesting \space condition$ and combining different families is very complicated with more parameter restrictions. In addition to that challenge, only one common family combination Clayton - Gumbel is proved to satisfy the nesting condition, while others remain unknown. 
 
-Copula family is determined based on the tail dependence of bivariate distributions. Different copula families have different pattern in the depedence of their bivariate tails. Particularly, Clayton copula has lower tail dependence, while Gumbel copula has upper tail dependence. An alternative strategy is to use $Rosenblatt \space transform$ as a graphical goodness-of-fit test to determine the appropriate copula because of the property 
-
-given copula $C'$ and $\textbf{U} \sim C$, $R_{C'}(\textbf{U}) \sim \prod$ if and only if $C' = C$. [@hofert2019elements]
+Copula family is determined based on the tail dependence of bivariate distributions. Different copula families have different pattern in the depedence of their bivariate tails. Particularly, Clayton copula has lower tail dependence, while Gumbel copula has upper tail dependence. An alternative strategy is to use $Rosenblatt \space transform$ as a graphical goodness-of-fit test to determine the appropriate copula because of the property: given copula $C'$ and $\textbf{U} \sim C$, $R_{C'}(\textbf{U}) \sim \prod$ if and only if $C' = C$. [@hofert2019elements]
 
 #### 3.3. Constructing random forest copula model
 
-Once we have obtained multiple different nesting structures, the next step is to construct a random forest copula model with these nesting structures as the component copula trees. The parameters of these component model are estimated with quasi MLE approach, corresponding to the method 1 in the `estimate.copula` function in the HAC package. After these parameters are estimated, they will be updated in the corresponding nesting structures and hence, in the random forest copula model. Specifically, $\theta_{rf} = \frac{1}{m} \sum_{k=1}^{m}\theta_{k}$ where $\theta_{k}$ is calculated based on the estimated parameters $\theta_{k1}, \cdots, \theta_{kd}$ from component copula $C_{k}$ for $k \in \{1, \cdots, m\}$. The average log-likelihood value of the random forest copula model is expected to be larger than any of the component copula trees, indicating that the random forest copula is superior. 
+Once we have obtained multiple different nesting structures, the next step is to construct a random forest copula model with these nesting structures as the component copula trees. The parameters of these component model are estimated with recursive maximum log-likelihood estimation procedure in the 'ncopula' package, where the copula parameter is estimated from the bottom of the tree and the copula value with new parameter is used to run the estimation at the next level. After these parameters are estimated, they will be updated in the corresponding nesting structures and hence, in the random forest copula model. The average log-likelihood value of the random forest copula model is expected to be larger than any of the component copula trees, indicating that the random forest copula is superior. 
 
 ### 4. Simulation Studies
 #### 4.1. Data simulation from a single NAC 
-
-This code below is adapted from Hierarchical Archimedean Copulae: The HAC package by Okhrin, Ristig. [@okhrin2012hierarchical]
-
-The example below uses the `rHAC` function provided in the HAC package, which generates the variables randomly with a predetermined tree structure. 
-
-```{r}
-# sample data from the book, type 1 Gumbel copula
-tree = list(list("X1", "X5", 3), list("X2", "X3", "X4", 4), 2)
-HAC = hac(type = 1, tree = tree) 
-x = rHAC(100, HAC)
-est.obj = estimate.copula(x, method = 1, hac = HAC, epsilon = 0.1)
-plot(est.obj)
-```
 
 Here is an example with similated data. 
  
 ```{r}
 # simulated data
+set.seed(9999)
 n <- 1000
 x_mu <- c(0, 0, 0)
 x_sigma <- matrix(c(1,.8,.7,
                     .8,1,.3, 
                     .7,.3,1), 3, 3)
-x_multinom <- matrix(mvrnorm(n = n, mu = x_mu , x_sigma), nrow = 100, ncol = 3)
+x_multinom <- mvrnorm(n = n, mu = x_mu , x_sigma)
+colnames(x_multinom) <- c("X1", "X2", "X3")
 ggpairs(as.data.frame(x_multinom))
 
 # U obtained manually
-U_multinom <- cbind(pnorm(x_multinom[,1], mean = mean(x_multinom[,1]),
-                 sd = sqrt((n-1)/n) * sd(x_multinom[,1])),
-                   pnorm(x_multinom[,2], mean = mean(x_multinom[,2]),
-                 sd = sqrt((n-1)/n) * sd(x_multinom[,2])),
-                    pnorm(x_multinom[,3], mean = mean(x_multinom[,3]),
-                 sd = sqrt((n-1)/n) * sd(x_multinom[,3])))
-
-
 U_multinom <- cbind(pnorm(x_multinom[,1], mean = 0, sd = 1),
                     pnorm(x_multinom[,2], mean = 0, sd = 1),
                     pnorm(x_multinom[,3], mean = 0, sd = 1))
 hist(U_multinom[,1])
 colnames(U_multinom) <- c("U1", "U2", "U3")
 
-# using pobs function
-U_multinom_obs <- pobs(x_multinom)
-colnames(U_multinom_obs) <- c("U1", "U2", "U3")
-hist(U_multinom_obs[,1])
-
 # estimate two trees
-tree_A <- list(list("U1", "U2", 6), "U3", 5)
-modelA <- hac(type = 3, tree = tree_A) 
-est.treeA <- estimate.copula(U_multinom, method = 2, hac = modelA, epsilon = 0.1)
-est.treeA
-plot(est.treeA)
+nac_node_childA <- new_nac_node("Clayton", 6, 1:2, list())
+nac_nodeA <- new_nac_node("Clayton", 5, 3, list(nac_node_childA))
+est_nodeA <- estimate_par(nac_nodeA, U_multinom)
+est_nodeA 
 
-tree_B <- list(list("U1", "U3", 6), "U2", 5)
-modelB <- hac(type = 3, tree = tree_B) 
-est.treeB <- estimate.copula(U_multinom, method = 2, hac = modelB, epsilon = 0.1)
-est.treeB
-plot(est.treeB)
+nac_node_childB <- new_nac_node("Clayton", 6, 1:3, list())
+nac_nodeB <- new_nac_node("Clayton", 5, 2, list(nac_node_childB))
+# outside of interval
+est_nodeB <- estimate_par(nac_nodeB, U_multinom)
+est_nodeB
 
-# simulate n = 1000 for the test set
+# simulate n = 1000 for the new test set
+set.seed(4321)
 n <- 10000
-x_test <- matrix(mvrnorm(n = n, mu = x_mu , x_sigma), nrow = 100, ncol = 3)
-U_test <- cbind(pnorm(x_test[,1], mean = mean(x_test[,1]),
-                 sd = sqrt((n-1)/n) * sd(x_test[,1])),
-                    pnorm(x_test[,2], mean = mean(x_test[,2]),
-                 sd = sqrt((n-1)/n) * sd(x_test[,2])),
-                    pnorm(x_test[,3], mean = mean(x_test[,3]),
-                 sd = sqrt((n-1)/n) * sd(x_test[,3])))
+x_mu <- c(0, 0, 0)
+x_sigma <- matrix(c(1,.8,.7,
+                    .8,1,.3, 
+                    .7,.3,1), 3, 3)
+x_test <- mvrnorm(n = n, mu = x_mu , x_sigma)
+U_test <- cbind(pnorm(x_test[,1], mean = 0, sd = 1),
+                pnorm(x_test[,2], mean = 0, sd = 1),
+                pnorm(x_test[,3], mean = 0, sd = 1))
+colnames(x_test) <- c("X1", "X2", "X3")
 colnames(U_test) <- c("U1", "U2", "U3")
 ggpairs(as.data.frame(x_test))
-est.test_treeA <- estimate.copula(U_test, method = 2, hac = modelA)
-plot(est.test_treeA)
-est.test_treeB <- estimate.copula(U_test, method = 2, hac = modelB)
-plot(est.test_treeB)
 
 # compare log-likelihood
-update_modelA <- hac(type = 3, tree = list(list("U1", "U2", 1), "U3", 1))
-update_modelB <- hac(type = 3, tree = list(list("U1", "U3", 1.03), "U2", 1)) 
+nodeA_par <- get_par(est_nodeA)
+density_nodeA <- get_loglik(est_nodeA, U_test, nodeA_par)
+nodeB_par <- get_par(est_nodeB)
+density_nodeB <- get_loglik(est_nodeB, U_test, nodeB_par)
+density_mix <- density_nodeA * 0.5 + density_nodeB * 0.5
 
-density_treeA <- sum(dHAC(U_test, update_modelA))
-density_treeB <- sum(dHAC(U_test, update_modelB))
-density_mix <- density_treeA * 0.5 + density_treeB * 0.5
-
-density_treeA
-density_treeB
+density_nodeA
+density_nodeB
 density_mix
 ```
 
@@ -304,45 +276,71 @@ colnames(U_pobs) <- c("U1", "U2", "U3","U4", "U5", "U6", "U7","U8", "U9", "U10",
 n <- nrow(U_pobs)
 
 # Frank tree - type 5
-tree1 <- list(list("U2", list("U9", list("U6", "U7", 7.5), 1.5), 0.7), 
-     list(list("U10", "U11", 1.3), list(list(list(list("U1", "U3", 5.25), "U8", 3.9), "U4", 2.7), "U5", 1.8), 0.31), 0.2)
-HAC1 <- hac(type = 1, tree = tree1) 
-est.tree1 <- estimate.copula(U_pobs, method = 1, hac = HAC1, epsilon = 0.1)
-plot(est.tree1)
-
-# Gumbel tree - type 1
-tree2 <- list(list(list("U6", "U7", 2), list("U2", "U9", 1.15), 1.05),
-      list(list(list(list(list(list("U1", "U8", 1.8), "U3", 1.6), "U4", 1.27), "U5", 1.18), "U10", 1.13), "U11", 1.05), 0.5)
-HAC2 <- hac(type = 1, tree = tree2) 
-est.tree2 <- estimate.copula(U_pobs, method = 1, hac = HAC2, epsilon = 0.1)
-plot(est.tree2)
-
-# Clayton tree - type 3
-tree3 <- list(list(list("U11", "U9", 6), "U10", 5), 
-              list(list(list(list(list("U1", "U8", 4), "U3", 3), "U4", 2), "U5", 1),
-                    list(list("U6", "U7", 2), "U2", 1), 0.5), 0.3)
-
-HAC3 <- hac(type = 3, tree = tree3) 
-# error: non-finite value supplied by optim
-# est.tree3 <- estimate.copula(U_pobs, method = 1, hac = HAC3, epsilon = 0.1)
-# plot(est.tree3)
-
-# method 1 with no predetermined tree structures
 est_hac_frank <- estimate.copula(U_pobs, type = 5)
-est_hac_frank
 plot(est_hac_frank)
 
+node13 <- new_nac_node("Frank", 5, c(1,3), list())
+node8 <- new_nac_node("Frank", 4, 8, list(node13))
+node4 <- new_nac_node("Frank", 3, 4, list(node8))
+node5 <- new_nac_node("Frank", 2, 5, list(node4))
+
+node1011 <- new_nac_node("Frank", 1.3, 10:11, list())
+child_node1 <- new_nac_node("Frank", 1.07, NULL, list(node5, node1011))
+
+node67 <- new_nac_node("Frank", 7, 6:7, list())
+node9 <- new_nac_node("Frank", 1.5, 9, list(node67))
+child_node2 <- new_nac_node("Frank", 1, 2, list(node9))
+frank_tree <- new_nac_node("Frank", 1, NULL, list(child_node1, child_node2))
+
+est.frank_tree <- estimate_par(frank_tree, U_pobs)
+get_par(est.frank_tree) 
+# 9.3998352  3.1074453  0.1808870  0.7080314  2.7713980  5.2508202 -0.2163255 -1.3947908 -1.2067169  6.6952668
+
+
+# Gumbel tree - type 1
+# For the Gumbel copula, tau must be >= 0. Replacing negative values by 0.Error in optim(par = par, fn = get_loglik, U = U, nac_Node = nac_Node,  : non-finite value supplied by optim
 est_hac_gumbel <- estimate.copula(U_pobs, type = 1) 
-est_hac_gumbel
 plot(est_hac_gumbel)
 
+node13 <- new_nac_node("Gumbel", 1.8, c(1,8), list())
+node8 <- new_nac_node("Gumbel", 1.6, 3, list(node13))
+node4 <- new_nac_node("Gumbel", 1.3, 4, list(node8))
+node5 <- new_nac_node("Gumbel", 1.2, 5, list(node4))
+node10 <- new_nac_node("Gumbel", 1.13, 10, list(node5))
+child_node1 <- new_nac_node("Gumbel", 1.05, 11, list(node10))
+
+node29 <- new_nac_node("Gumbel", 1.16, c(2,9), list())
+node67 <- new_nac_node("Gumbel", 2, 6:7, list())
+child_node2 <- new_nac_node("Gumbel", 1.04, NULL, list(node29, node67))
+
+gumbel_tree <- new_nac_node("Gumbel", 1, NULL, list(child_node1, child_node2))
+est.gumbel_tree <- estimate_par(gumbel_tree, U_pobs)
+get_par(est.gumbel_tree)
+
+# Clayton tree - type 3
+# theta is outside its defined interval
 est_hac_clayton <- estimate.copula(U_pobs, type = 3)
-est_hac_clayton
 plot(est_hac_clayton)
+
+node13 <- new_nac_node("Clayton", 1.09, c(1,8), list())
+node8 <- new_nac_node("Clayton", 0.86, 3, list(node13))
+node4 <- new_nac_node("Clayton", 0.46, 4, list(node8))
+node5 <- new_nac_node("Clayton", 0.34, 5, list(node4))
+
+node67 <- new_nac_node("Clayton", 2.05, 6:7, list())
+node2 <- new_nac_node("Clayton", 0.13, 2, list(node67))
+child_node2 <- new_nac_node("Clayton", 0.5, NULL, list(node5, node2))
+
+node911 <- new_nac_node("Clayton", 0.21, c(9,11), list())
+child_node1 <- new_nac_node("Clayton", 0.11, 10, list(node911))
+clayton_tree <- new_nac_node("Clayton", 0.05, NULL, list(child_node1, child_node2))
+est.clayton_tree <- estimate_par(clayton_tree, U_pobs)
+get_par(est.clayton_tree)
 ```
 
 ### 6. Discussion
 ### 7. References
+
 
 \bibliography{bibliography}
 \bibliographystyle{plainnat}
