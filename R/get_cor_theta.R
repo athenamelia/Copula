@@ -46,7 +46,7 @@ get_cor_theta <- function(nac_Node, U) {
 
   tau <- mean(corr_coef)
   theta <- iTau(archmCopula(family = family), tau = tau)
-  bound_theta(nac_Node, theta)
+  theta <- bound_theta(nac_Node, theta)
   return(theta)
 }
 
@@ -61,7 +61,6 @@ bound_theta <- function(nac_Node, theta) {
   family <- get_family(nac_Node)
   ncol_U <- length(get_U_indices(nac_Node))
   nsubcopula <- count_subcopula(nac_Node)
-  theta <- get_theta(nac_Node)
   upper_bound <- Inf
   lower_bound <- -Inf
   dimension <- 3
@@ -112,6 +111,7 @@ bound_theta <- function(nac_Node, theta) {
   if (disallow_0 && (abs(theta) < sqrt(.Machine$double.eps))) {
     theta <- 2 * sqrt(.Machine$double.eps)
   }
+
   return(theta)
 }
 

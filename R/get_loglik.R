@@ -15,8 +15,10 @@ get_loglik <- function(nac_Node, U, par) {
   # }
 
   nac_Node <- set_par(nac_Node, new_par)[[1]]
+  print(new_par)
   # evaluate log-likelihood at provided parameter values
   result <- sum(dncopula(nac_Node, U, log = TRUE))
+  cat("\n\n")
   return(result)
 }
 

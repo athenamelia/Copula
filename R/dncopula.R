@@ -11,6 +11,9 @@ dncopula <- function(nac_Node, U, log = TRUE) {
   ncol_U <- length(get_U_indices(nac_Node))
   U_indices <- get_U_indices(nac_Node)
 
+  print(paste("theta = ", theta))
+  print(paste("dim = ", ncol_U))
+
   if (has_subcopula(nac_Node) == FALSE) {
     if (family == 'Clayton') {
       density <- density + dCopula(U[,U_indices], claytonCopula(theta, dim = ncol_U), log = TRUE)
