@@ -2,20 +2,20 @@
 % Please edit documentation in R/get_loglik.R
 \name{get_loglik}
 \alias{get_loglik}
-\title{estimation of nested A. copula parameters}
+\title{Log likelihood of nested A. copula parameters}
 \usage{
 get_loglik(nac_Node, U, par)
 }
 \arguments{
-\item{nac_Node}{an NAC node}
+\item{nac_Node}{object of class}
 
 \item{U}{pseudo-observations}
 
-\item{par}{a vector of parameters}
+\item{par}{a vector of copula parameters on unbounded scale (real numbers)}
 }
 \value{
-result obtained from optimizing provided parameters
+Log-likelihood
 }
 \description{
-estimation of nested A. copula parameters
+Log likelihood of nested A. copula parameters
 }

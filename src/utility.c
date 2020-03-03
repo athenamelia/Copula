@@ -135,7 +135,7 @@ SEXP logspace_sub_matrix_rows_C(SEXP Xp, SEXP N_rowp) {
 
 R_CallMethodDef callMethods[] =
 {
-  {"logspace_add_C", (DL_FUNC)&logspace_sub_C, 2},
+  {"logspace_add_C", (DL_FUNC)&logspace_add_C, 2},
   {"logspace_sum_matrix_rows_C", (DL_FUNC)&logspace_sum_matrix_rows_C, 3},
   {"logspace_sub_C", (DL_FUNC)&logspace_sub_C, 2},
   {"logspace_sub_matrix_rows_C", (DL_FUNC)&logspace_sub_matrix_rows_C, 2},
