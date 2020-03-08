@@ -47,5 +47,5 @@ test_that("get_cor_theta works, Frank with no subcopulas", {
   U <- matrix(runif(n = 300), nrow = 100, ncol = 3)
   nac_node <- new_nac_node("Frank", th[1], 1:3, list())
 
-  expect_equal(get_cor_theta(nac_node, U), -0.0982, tolerance = 0.001)
+  expect_equal(get_cor_theta(nac_node, U), 0.05, tolerance = 0.001)
 })

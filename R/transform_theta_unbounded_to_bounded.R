@@ -79,14 +79,15 @@ transform_nac <- function(nac_Node) {
   }
 
   if (lower_bound > -Inf & upper_bound == Inf) {
-    theta <- lower_bound + exp(theta)
+    theta <- lower_bound + logspace_add(0, theta)
   } else if (lower_bound > -Inf & upper_bound < Inf) {
-    theta <- lower_bound + exp(theta)/(1 + exp(theta)) * (upper_bound - lower_bound)
+    theta <- lower_bound + exp(theta - logspace_add(0, theta)) * (upper_bound - lower_bound)
   }
 
   if (disallow_0 && (abs(theta) < sqrt(.Machine$double.eps))) {
-    # Frank and Clayton families can’t have theta = 0
     theta <- 2 * sqrt(.Machine$double.eps)
   }
+
+  # print(paste0("in transform function, theta is ", theta))
   return(theta)
 }

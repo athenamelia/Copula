@@ -47,7 +47,7 @@ untransform_nac <- function(nac_Node) {
   if (family == "Clayton") {
     upper_bound <- Inf
     if (dimension == 2) {
-      lower_bound <- -1 # cannot be 0
+      lower_bound <- -1
     } else {
       lower_bound <- 0
     }
@@ -56,7 +56,7 @@ untransform_nac <- function(nac_Node) {
   else if (family == "Frank") {
     upper_bound <- Inf
     if (dimension == 2) {
-      lower_bound <- -Inf # cannot be 0
+      lower_bound <- -Inf
     } else {
       lower_bound <- 0
     }
@@ -76,16 +76,20 @@ untransform_nac <- function(nac_Node) {
       lower_bound <- 0
     }
   }
+  # print(paste0("in untransform function, original theta is ", theta))
+  # print(paste0("in untransform function, the bounds are ", lower_bound, " and ", upper_bound))
 
   if (lower_bound > -Inf & upper_bound == Inf) {
-    theta <- log(theta - lower_bound)
+    theta <- logspace_sub(theta - lower_bound + 0.5, 0)
+
   } else if (lower_bound > -Inf & upper_bound < Inf) {
-    theta <- log(1 - (1 / (1 - (theta - lower_bound) / (upper_bound - lower_bound))))
+    theta <- log(1 / (1 - (theta - lower_bound + 0.5) / (upper_bound - lower_bound + 0.5)) - 1 + 0.5)
   }
 
   if (disallow_0 && (abs(theta) < sqrt(.Machine$double.eps))) {
-    # Frank and Clayton families can’t have theta = 0
     theta <- 2 * sqrt(.Machine$double.eps)
   }
+
+  # print(paste0("in untransform function, theta is ", theta))
   return(theta)
 }

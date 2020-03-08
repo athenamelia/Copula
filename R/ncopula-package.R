@@ -5,6 +5,7 @@
 #'@author Amelia Tran <tran26h@mtholyoke.edu>, Evan Ray <eray@mtholyoke.edu>
 #'@docType package
 #'@name ncopula
+#'@import caret
 #'@useDynLib ncopula, .registration = TRUE
 #'@aliases ncopula ncopula-package
 NULL

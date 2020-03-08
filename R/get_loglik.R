@@ -9,16 +9,10 @@ get_loglik <- function(nac_Node, U, par) {
 
   nac_Node <- set_par(nac_Node, par)[[1]]
   new_par <- transform_theta_unbounded_to_bounded(nac_Node)
-
-  # if(is.na(par)) {
-  #   browser()
-  # }
+  # print(paste0("in get_loglik, bounded param are ", new_par))
 
   nac_Node <- set_par(nac_Node, new_par)[[1]]
-  print(new_par)
-  # evaluate log-likelihood at provided parameter values
   result <- sum(dncopula(nac_Node, U, log = TRUE))
-  cat("\n\n")
   return(result)
 }
 
