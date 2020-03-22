@@ -76,20 +76,24 @@ untransform_nac <- function(nac_Node) {
       lower_bound <- 0
     }
   }
-  # print(paste0("in untransform function, original theta is ", theta))
-  # print(paste0("in untransform function, the bounds are ", lower_bound, " and ", upper_bound))
+  print(paste0("in untransform function, original theta is ", theta))
+  print(paste0("in untransform function, the bounds are ", lower_bound, " and ", upper_bound))
 
   if (lower_bound > -Inf & upper_bound == Inf) {
-    theta <- logspace_sub(theta - lower_bound + 0.5, 0)
+    theta <- logspace_sub(theta - lower_bound, 0)
 
   } else if (lower_bound > -Inf & upper_bound < Inf) {
-    theta <- log(1 / (1 - (theta - lower_bound + 0.5) / (upper_bound - lower_bound + 0.5)) - 1 + 0.5)
+    theta <- log(1 / (1 - (theta - lower_bound) / (upper_bound - lower_bound)) - 1)
   }
 
   if (disallow_0 && (abs(theta) < sqrt(.Machine$double.eps))) {
     theta <- 2 * sqrt(.Machine$double.eps)
   }
 
-  # print(paste0("in untransform function, theta is ", theta))
+  if (theta == -Inf || is.nan(theta)) {
+    theta <- -.Machine$double.xmax
+  }
+
+  print(paste0("in untransform function, theta is ", theta))
   return(theta)
 }

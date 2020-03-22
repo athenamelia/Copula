@@ -208,7 +208,7 @@ Here is an example with similated data.
  
 ```{r}
 # simulated data
-times <- 100
+times <- 200
 
 log_scores <- data.frame(
   mix = 1:times, 
@@ -271,6 +271,7 @@ ggplot(data = log_scores, mapping = aes(x = nodeB)) +
   geom_density()
 
 log_scores
+mean(log_scores)
 ```
 
 ### 5. Applications
@@ -280,6 +281,7 @@ wine_red <- read.csv("data/wine_red.csv")
 wine_red_df <- as.data.frame(wine_red)
 X  <- wine_red_df[-c(1296, 1297), -12]
 U_pobs <- pobs(X[,1:11])
+colnames(X) <- c("X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "X10", "X11")
 colnames(U_pobs) <- c("U1", "U2", "U3","U4", "U5", "U6", "U7","U8", "U9", "U10","U11")
 n <- nrow(U_pobs)
 
@@ -303,7 +305,6 @@ frank_tree <- new_nac_node("Frank", 1, NULL, list(child_node1, child_node2))
 est.frank_tree <- estimate_par(frank_tree, U_pobs)
 get_par(est.frank_tree) 
 # 9.3998352  3.1074453  0.1808870  0.7080314  2.7713980  5.2508202 -0.2163255 -1.3947908 -1.2067169  6.6952668
-
 
 # Gumbel tree - type 1
 est_hac_gumbel <- estimate.copula(U_pobs, type = 1) 

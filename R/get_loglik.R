@@ -9,10 +9,17 @@ get_loglik <- function(nac_Node, U, par) {
 
   nac_Node <- set_par(nac_Node, par)[[1]]
   new_par <- transform_theta_unbounded_to_bounded(nac_Node)
-  # print(paste0("in get_loglik, bounded param are ", new_par))
+  print(paste0("in get_loglik, bounded param are ", new_par))
 
   nac_Node <- set_par(nac_Node, new_par)[[1]]
+  print(paste0("after set_par, par = ", get_par(nac_Node)))
   result <- sum(dncopula(nac_Node, U, log = TRUE))
+  print(paste0("result = ", result))
+
+  if (result == -Inf || is.nan(result)) {
+    result <- -.Machine$double.xmax
+  }
+  print(paste0("result = ", result))
   return(result)
 }
 

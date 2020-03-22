@@ -36,7 +36,7 @@ estimate_par <- function(nac_Node, U) {
 #' @export
 estimate_nac <- function(nac_Node, U) {
   par <- transform_theta_bounded_to_unbounded(nac_Node)
-  # print(paste0("in estimate function, unbounded estimate before calling optim is ", par))
+  print(paste0("in estimate function, unbounded estimate before calling optim is ", par))
 
   result <- optim(par = par,
                   fn = get_loglik,
@@ -46,9 +46,9 @@ estimate_nac <- function(nac_Node, U) {
                   control = list(fnscale = -1))
 
   estimate <- result$par
-  # print(paste0("in estimate function, unbounded estimate is ", estimate))
+  print(paste0("in estimate function, unbounded estimate is ", estimate))
   bounded_estimate <- transform_theta_unbounded_to_bounded(set_par(nac_Node, estimate)[[1]])
-  # print(paste0("in estimate function, bounded estimate is ", estimate))
+  print(paste0("in estimate function, bounded estimate is ", estimate))
   nac_Node <- set_par(nac_Node, bounded_estimate)[[1]]
 
   return(nac_Node)

@@ -32,7 +32,7 @@ test_that("get_xv works, normal nesting structure with Gumbel", {
   nac_node_child <- new_nac_node("Gumbel", th[2], 3:4, list())
   nac_node_normal <- new_nac_node("Gumbel", th[1], 1:2, list(nac_node_child))
 
-  expect_equal(get_xv(X, nac_node_normal, k = 10), -0.02895448, tolerance = 0.001)
+  expect_equal(get_xv(X, nac_node_normal, k = 10), -0.0702, tolerance = 0.001)
 })
 
 test_that("get_xv works, normal nesting structure with amh", {
@@ -90,5 +90,5 @@ test_that("get_xv works, NAC with complex nesting structure", {
   nac_node_full <- new_nac_node("Clayton", th[1], NULL, list(nac_node_child1,
                                                              nac_node_child2,
                                                              nac_node_child3))
-  expect_equal(get_xv(X, nac_node_full, k = 15), 11.93129, tolerance = 0.001)
+  expect_equal(get_xv(X, nac_node_full, k = 15), -Inf, tolerance = 0.001)
 })
